@@ -1,0 +1,19 @@
+# Map Service Dockerfile (Node.js + TypeScript)
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY apps/map-service/package*.json ./
+
+# Install dependencies (this replaces node_modules!)
+RUN npm install
+
+# Copy source code
+COPY apps/map-service/ .
+
+# Expose port
+EXPOSE 4000
+
+# Start development server
+CMD ["npm", "run", "dev"]
