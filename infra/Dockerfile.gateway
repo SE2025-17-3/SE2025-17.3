@@ -1,0 +1,19 @@
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy gateway project files (assuming it’s in apps/gateway)
+COPY ./apps/gateway/package*.json ./
+
+# Install dependencies
+RUN npm install --production
+
+# Copy all gateway config and source files
+COPY ./apps/gateway .
+
+# Expose the Express Gateway port (default: 8080)
+EXPOSE 8080
+
+# Start Express Gateway
+CMD ["npm", "start"]
