@@ -74,13 +74,3 @@ __pypackages__/
 temp/
 tmp/
 
-# add skeleton without code files
-*.ts
-*.js
-*.py
-*.java
-*.json
-*.html
-*.css
-*.env
-*.md
