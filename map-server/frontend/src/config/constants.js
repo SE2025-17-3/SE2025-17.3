@@ -6,7 +6,7 @@ export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:4
 
 // Cấu hình lưới và bản đồ
 export const ASPECT_RATIO = 360 / 170.1;
-export const GRID_HEIGHT = 5000;
+export const GRID_HEIGHT = 10000;
 export const GRID_WIDTH = Math.round(GRID_HEIGHT * ASPECT_RATIO);
 export const WORLD_BOUNDS = L.latLngBounds([-85.05112878, -180], [85.05112878, 180]);
 
