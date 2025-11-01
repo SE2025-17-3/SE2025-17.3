@@ -8,6 +8,7 @@ import {
   CHUNK_SIZE,
   MIN_ZOOM_TO_SHOW_PIXELS,
   API_URL,
+<<<<<<< HEAD
 } from "../config/constants";
 import { useSocket } from "../context/SocketContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx"; 
@@ -18,11 +19,23 @@ const GlobalCanvasGrid = ({ selectedColor, onLoginRequired, selectedPixel, onPix
   const map = useMap();
   const socket = useSocket();
   const { isLoggedIn } = useAuth(); 
+=======
+} from "../config/constants"; 
+import { useSocket } from "../context/SocketContext.jsx"; 
+
+const GlobalCanvasGrid = ({ selectedColor }) => { 
+  const map = useMap();
+  const socket = useSocket(); 
+>>>>>>> develop
   const [pixels, setPixels] = useState(new Map());
   const canvasRef = useRef(null);
   const loadedChunksRef = useRef(new Set());
 
+<<<<<<< HEAD
   // --- Hàm chuyển đổi tọa độ (giữ nguyên) ---
+=======
+  // --- Hàm chuyển đổi tọa độ (Đã sửa lỗi lệch) ---
+>>>>>>> develop
   const latLngToGrid = useCallback((latlng) => {
     const clampedLat = Math.max(
       WORLD_BOUNDS.getSouth(),
@@ -64,9 +77,18 @@ const GlobalCanvasGrid = ({ selectedColor, onLoginRequired, selectedPixel, onPix
          const chunkKey = `${x}:${y}`;
          if (!loadedChunksRef.current.has(chunkKey)) {
            loadedChunksRef.current.add(chunkKey);
+<<<<<<< HEAD
            api.get(`/pixels/chunk/${x}/${y}`)
              .then((res) => {
                const chunkData = res.data;
+=======
+           fetch(`${API_URL}/api/pixels/chunk/${x}/${y}`)
+             .then((res) => {
+               if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+               return res.json();
+             })
+             .then((chunkData) => {
+>>>>>>> develop
                if(Array.isArray(chunkData)) {
                  setPixels((prev) => {
                    const newMap = new Map(prev);
@@ -110,11 +132,16 @@ const GlobalCanvasGrid = ({ selectedColor, onLoginRequired, selectedPixel, onPix
     return () => socket.off("pixel_placed", handleNewPixel);
   }, [socket]);
 
+<<<<<<< HEAD
   // --- SỬA ĐỔI: useEffect vẽ canvas (thêm 'selectedPixel' và vẽ ô chọn) ---
+=======
+  // --- useEffect vẽ canvas (SỬA LỖI Ở ĐÂY) ---
+>>>>>>> develop
   useEffect(() => {
     if (!canvasRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
+<<<<<<< HEAD
 
     // Hàm tiện ích để tính toán vị trí pixel (giống trong vòng lặp)
     const getPixelGeometry = (gx, gy) => {
@@ -151,18 +178,44 @@ const GlobalCanvasGrid = ({ selectedColor, onLoginRequired, selectedPixel, onPix
 
         if (mapBounds.intersects(bounds)) {
           if (width >= 0.5 && height >= 0.5) {
+=======
+    const drawCanvas = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (map.getZoom() < MIN_ZOOM_TO_SHOW_PIXELS) return;
+      const mapBounds = map.getBounds();
+      pixels.forEach((color, key) => {
+        const [gx, gy] = key.split(":").map(Number);
+        const lat1 = WORLD_BOUNDS.getNorth() - (gy / GRID_HEIGHT) * (WORLD_BOUNDS.getNorth() - WORLD_BOUNDS.getSouth());
+        const lng1 = WORLD_BOUNDS.getWest() + (gx / GRID_WIDTH) * (WORLD_BOUNDS.getEast() - WORLD_BOUNDS.getWest());
+        const latLng1 = L.latLng(lat1, lng1);
+        const lat2 = WORLD_BOUNDS.getNorth() - ((gy + 1) / GRID_HEIGHT) * (WORLD_BOUNDS.getNorth() - WORLD_BOUNDS.getSouth());
+        const lng2 = WORLD_BOUNDS.getWest() + ((gx + 1) / GRID_WIDTH) * (WORLD_BOUNDS.getEast() - WORLD_BOUNDS.getWest());
+        const latLng2 = L.latLng(lat2, lng2);
+        if (mapBounds.intersects(L.latLngBounds(latLng1, latLng2))) {
+          const screenPoint1 = map.latLngToContainerPoint(latLng1);
+          const screenPointBottomRight = map.latLngToContainerPoint(L.latLng(lat2, lng2));
+          const pixelWidthOnScreen = Math.abs(screenPointBottomRight.x - screenPoint1.x);
+          const pixelHeightOnScreen = Math.abs(screenPointBottomRight.y - screenPoint1.y);
+          if (pixelWidthOnScreen >= 0.5 && pixelHeightOnScreen >= 0.5) {
+>>>>>>> develop
             if (typeof color === 'string' && color.startsWith('#')) {
                 ctx.fillStyle = color;
                 ctx.fillRect(
                     Math.round(screenPoint1.x),
                     Math.round(screenPoint1.y),
+<<<<<<< HEAD
                     Math.ceil(width),
                     Math.ceil(height)
+=======
+                    Math.ceil(pixelWidthOnScreen),
+                    Math.ceil(pixelHeightOnScreen)
+>>>>>>> develop
                 );
             }
           }
         }
       });
+<<<<<<< HEAD
 
       // 2. Vẽ ô vuông chọn (nếu có)
       if (selectedPixel) {
@@ -212,26 +265,87 @@ const GlobalCanvasGrid = ({ selectedColor, onLoginRequired, selectedPixel, onPix
         console.log(`🖱️ Đã chọn pixel: (${gx}, ${gy})`);
         
         // Không gửi fetch/api.post ở đây nữa
+=======
+    };
+    
+    // ⭐ SỬA LỖI: Chỉ vẽ lại KHI KÉO XONG, không phải TRONG KHI KÉO
+    // map.on("move", drawCanvas); // <-- XÓA DÒNG NÀY
+    map.on("moveend", drawCanvas); // <-- THAY BẰNG DÒNG NÀY
+    map.on("zoomend", drawCanvas);
+    
+    drawCanvas(); // Vẽ khi state 'pixels' thay đổi
+
+    return () => {
+      // map.off("move", drawCanvas); // <-- XÓA DÒNG NÀY
+      map.off("moveend", drawCanvas); // <-- THAY BẰNG DÒNG NÀY
+      map.off("zoomend", drawCanvas);
+    };
+  }, [map, pixels]); // Dependency giữ nguyên
+
+  // --- useEffect xử lý click chuột (giữ nguyên) ---
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (map.getZoom() < MIN_ZOOM_TO_SHOW_PIXELS) {
+        console.log("Zoom gần hơn để đặt pixel.");
+        return;
+      }
+      if (WORLD_BOUNDS.contains(e.latlng)) {
+        const { gx, gy } = latLngToGrid(e.latlng);
+        const colorToSend = selectedColor; 
+        
+        console.log(`⬆️ Gửi pixel: (${gx}, ${gy}) - ${colorToSend}`);
+        fetch(`${API_URL}/api/pixels`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ gx, gy, color: colorToSend }), 
+        })
+          .then((res) => { 
+            if (!res.ok) return res.json().then((err) => { throw new Error(err.error || `HTTP ${res.status}`) });
+            return res.json();
+           })
+          .then((placedPixel) =>
+            console.log("✅ Đặt pixel thành công:", placedPixel)
+          )
+          .catch((err) => console.error("❌ Lỗi khi gửi pixel:", err.message));
+>>>>>>> develop
       }
     };
     map.on("click", handleClick);
     return () => map.off("click", handleClick);
+<<<<<<< HEAD
   }, [map, latLngToGrid, isLoggedIn, onLoginRequired, onPixelSelect]); // <-- Thêm dependencies
 
   // --- useEffect xử lý resize (giữ nguyên) ---
+=======
+  }, [map, latLngToGrid, selectedColor]);
+
+  // --- useEffect xử lý resize (Sửa đổi để vẽ lại) ---
+>>>>>>> develop
   useEffect(() => {
     const updateCanvasSize = () => {
         if (canvasRef.current) {
             const size = map.getSize();
             canvasRef.current.width = size.x;
             canvasRef.current.height = size.y;
+<<<<<<< HEAD
             map.fire('moveend'); 
+=======
+            
+            // ⭐ THÊM DÒNG NÀY:
+            // Yêu cầu vẽ lại ngay sau khi resize,
+            // nếu không canvas sẽ bị trống cho đến lần kéo tiếp theo.
+            map.fire('moveend'); // Kích hoạt sự kiện 'moveend' để trigger 'drawCanvas'
+>>>>>>> develop
         }
     };
     map.on("resize", updateCanvasSize);
     updateCanvasSize(); 
     return () => map.off("resize", updateCanvasSize);
+<<<<<<< HEAD
   }, [map]); 
+=======
+  }, [map]); // Dependency chỉ là map
+>>>>>>> develop
 
   return (
     <canvas
@@ -247,5 +361,9 @@ const GlobalCanvasGrid = ({ selectedColor, onLoginRequired, selectedPixel, onPix
   );
 };
 
+<<<<<<< HEAD
 export default GlobalCanvasGrid;
 
+=======
+export default GlobalCanvasGrid;
+>>>>>>> develop

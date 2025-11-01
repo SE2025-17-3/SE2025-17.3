@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+<<<<<<< HEAD
 import './PaintControls.css';
 import { useAuth } from '../context/AuthContext.jsx'; // <-- Import useAuth
 import api from '../services/api'; // <-- Import api service
@@ -8,12 +9,20 @@ const PaintControls = ({ selectedColor, onColorSelect, selectedPixel, onPixelSel
     const [isPaletteVisible, setIsPaletteVisible] = useState(false);
     const { isLoggedIn } = useAuth(); // Lấy trạng thái đăng nhập
 
+=======
+import './PaintControls.css'; // Đảm bảo bạn đã tạo file CSS này
+
+// Component Bảng điều khiển màu sắc
+const PaintControls = ({ selectedColor, onColorSelect }) => { // <-- Nhận 'onColorSelect'
+    const [isPaletteVisible, setIsPaletteVisible] = useState(false);
+>>>>>>> develop
     const colors = [
         '#FFFFFF', '#C2C2C2', '#858585', '#474747', '#000000', '#2E5094', '#3E8AE6',
         '#47D4E6', '#85E685', '#479447', '#3E8A3E', '#F7E63E', '#F7A63E', '#F76B3E',
         '#E63E3E', '#942E2E', '#E68585', '#B54794', '#853E8A'
     ];
     
+<<<<<<< HEAD
     // --- SỬA ĐỔI: Logic khi click vào một màu (XÁC NHẬN TÔ MÀU) ---
     const handleColorSelect = async (color) => {
         // 1. Cập nhật màu được chọn (UI)
@@ -55,12 +64,23 @@ const PaintControls = ({ selectedColor, onColorSelect, selectedPixel, onPixelSel
     // Giờ đây nó chỉ bật/tắt bảng màu
     const handlePaintButtonClick = () => {
         setIsPaletteVisible(!isPaletteVisible);
+=======
+    const handleColorSelect = (color) => {
+        // Gọi hàm 'onColorSelect' đã nhận từ props
+        if (typeof onColorSelect === 'function') {
+             onColorSelect(color); 
+        } else {
+            console.error("Lỗi: prop 'onColorSelect' không phải là một hàm!");
+        }
+        setIsPaletteVisible(false);
+>>>>>>> develop
     };
 
     return (
         <div className="paint-controls-container">
             {isPaletteVisible && (
                 <div className="color-palette">
+<<<<<<< HEAD
                     {colors.map(colorSwatch => (
                         <button 
                             key={colorSwatch} 
@@ -68,11 +88,24 @@ const PaintControls = ({ selectedColor, onColorSelect, selectedPixel, onPixelSel
                             style={{ backgroundColor: colorSwatch }} 
                             onClick={() => handleColorSelect(colorSwatch)} 
                             title={colorSwatch}
+=======
+                    {colors.map(color => (
+                        <button 
+                            key={color} 
+                            className="color-swatch" 
+                            style={{ backgroundColor: color }} 
+                            onClick={() => handleColorSelect(color)} 
+                            title={color}
+>>>>>>> develop
                         />
                     ))}
                 </div>
             )}
+<<<<<<< HEAD
             <button className="paint-button" onClick={handlePaintButtonClick} title="Choose Color">
+=======
+            <button className="paint-button" onClick={() => setIsPaletteVisible(!isPaletteVisible)} title="Choose Color">
+>>>>>>> develop
                 <div className="current-color-display" style={{ backgroundColor: selectedColor }} />
                 Paint
             </button>
@@ -80,4 +113,8 @@ const PaintControls = ({ selectedColor, onColorSelect, selectedPixel, onPixelSel
     );
 };
 
+<<<<<<< HEAD
 export default PaintControls;
+=======
+export default PaintControls;
+>>>>>>> develop
