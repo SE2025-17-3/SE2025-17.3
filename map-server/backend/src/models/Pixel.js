@@ -14,6 +14,12 @@ const pixelSchema = new mongoose.Schema({
     default: '#FFFFFF', // Đổi thành màu trắng mặc định hoặc màu nền của bạn
     match: [/^#[0-9a-fA-F]{6}$/, 'Mã màu không hợp lệ (#rrggbb)'] 
   },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false, // Cho phép pixel anonymous (không bắt buộc phải đăng nhập)
+    default: null
+  },
   updatedAt: { // <-- Thêm trường này
     type: Date,
     default: Date.now,
@@ -24,6 +30,8 @@ const pixelSchema = new mongoose.Schema({
 pixelSchema.index({ gx: 1, gy: 1 }, { unique: true });
 // Index theo thời gian (hữu ích sau này)
 pixelSchema.index({ updatedAt: -1 }); 
+// Index theo userId để track pixels của từng user
+pixelSchema.index({ userId: 1 }); 
 
 // Middleware để tự động cập nhật 'updatedAt' trước khi lưu
 pixelSchema.pre('findOneAndUpdate', function(next) {
