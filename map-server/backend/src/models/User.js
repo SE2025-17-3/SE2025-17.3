@@ -23,6 +23,13 @@ const userSchema = new mongoose.Schema({
     minlength: [6, 'Mật khẩu phải có ít nhất 6 ký tự'],
     select: false, // Mặc định không trả về password khi truy vấn
   },
+  teamId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Team',
+    default: null,
+    required: false,
+    index: true,
+  },
 }, { timestamps: true }); // Thêm createdAt/updatedAt
 
 // Middleware: Mã hóa mật khẩu trước khi lưu
