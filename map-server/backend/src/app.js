@@ -1,8 +1,7 @@
 import express from 'express';
 import cors from 'cors';
-// Import hàm cấu hình routes, không phải router trực tiếp
-import configurePixelRoutes from './routes/pixelRoutes.js';
-// Import các routes khác bạn đã tạo
+// Import routes
+import pixelRoutes from './routes/pixelRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 
@@ -12,23 +11,19 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 // --- MIDDLEWARE CỦA EXPRESS NÊN ĐƯỢC ĐẶT Ở ĐÂY ---
 
 // 1. CORS (Phải chạy trước session và routes)
-// (Được chuyển từ server.js về)
 app.use(cors({
   origin: FRONTEND_URL,
   credentials: true // ⚠️ Quan trọng: Cho phép gửi cookie
 }));
 
-// 2. Body Parsers (Lấy từ server.js trả về)
+// 2. Body Parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // --------------------------------------------------
 
-
-// Lưu hàm cấu hình để server.js sử dụng
-// (Lưu ý: session middleware sẽ được thêm vào giữa 
-// middleware ở trên và routes ở dưới, trong file server.js)
-app.configureRoutes = (io) => {
-  app.use('/api/pixels', configurePixelRoutes(io)); // Gọi hàm cấu hình ở đây
+// Configure routes (session middleware will be added before this in server.js)
+app.configureRoutes = () => {
+  app.use('/api/pixels', pixelRoutes); // No longer needs io parameter
   app.use('/api/auth', authRoutes);
   app.use('/api/users', userRoutes);
 

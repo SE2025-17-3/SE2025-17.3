@@ -1,11 +1,13 @@
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
-// import cors from 'cors'; // <-- Không cần import ở đây nữa, đã ở app.js
 import session from 'express-session';
 import MongoStore from 'connect-mongo';
 import { connectDB } from './src/config/db.js';
-import app from './src/app.js'; // app đã import express, cors, và json/urlencoded
+import app from './src/app.js';
+import { getOutboxPublisher } from './src/workers/outboxPublisher.js';
+import StreamConsumer from './src/workers/streamConsumer.js';
+import { closeAllRedisConnections } from './src/config/redis.js';
 
 // --- Cấu hình ban đầu ---
 dotenv.config();
@@ -66,8 +68,82 @@ io.on('connection', (socket) => {
 });
 
 // --- Cấu hình Routes (sau khi đã cài tất cả middleware) ---
-app.configureRoutes(io); 
+app.configureRoutes(); // No longer needs io parameter
+
+// --- Khởi động Workers (Outbox Pattern) ---
+const outboxPublisher = getOutboxPublisher({
+  pollInterval: 100, // Poll every 100ms
+  batchSize: 50,
+});
+
+const streamConsumer = new StreamConsumer(io, {
+  consumerName: `consumer-${process.pid}`,
+  blockTime: 1000,
+  batchSize: 10,
+});
+
+// Start workers
+(async () => {
+  try {
+    await outboxPublisher.start();
+    await streamConsumer.start();
+    console.log('✅ All workers started successfully');
+  } catch (err) {
+    console.error('❌ Failed to start workers:', err);
+    process.exit(1);
+  }
+})();
+
+// --- Graceful Shutdown ---
+const gracefulShutdown = async (signal) => {
+  console.log(`\n🛑 ${signal} received. Starting graceful shutdown...`);
+  
+  try {
+    // Stop accepting new connections
+    server.close(() => {
+      console.log('✅ HTTP server closed');
+    });
+
+    // Stop workers
+    await outboxPublisher.stop();
+    await streamConsumer.stop();
+    console.log('✅ Workers stopped');
+
+    // Close Redis connections
+    await closeAllRedisConnections();
+
+    // Close Socket.IO
+    io.close(() => {
+      console.log('✅ Socket.IO closed');
+    });
+
+    console.log('✅ Graceful shutdown completed');
+    process.exit(0);
+  } catch (err) {
+    console.error('❌ Error during shutdown:', err);
+    process.exit(1);
+  }
+};
+
+// Listen for termination signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Handle uncaught errors
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught Exception:', err);
+  gracefulShutdown('UNCAUGHT_EXCEPTION');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  gracefulShutdown('UNHANDLED_REJECTION');
+});
 
 // --- Khởi động Server ---
-server.listen(PORT, () => console.log(`✅ Server đang chạy trên port ${PORT}`));
+server.listen(PORT, () => {
+  console.log(`✅ Server đang chạy trên port ${PORT}`);
+  console.log(`📡 Frontend URL: ${FRONTEND_URL}`);
+  console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
+});
 
