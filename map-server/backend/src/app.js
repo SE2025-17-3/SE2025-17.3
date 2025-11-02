@@ -5,6 +5,8 @@ import configurePixelRoutes from './routes/pixelRoutes.js';
 // Import các routes khác bạn đã tạo
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import leaderboardRoutes from './routes/leaderboardRoutes.js';
+import statsRoutes from './routes/statsRoutes.js';
 
 const app = express();
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -31,6 +33,8 @@ app.configureRoutes = (io) => {
   app.use('/api/pixels', configurePixelRoutes(io)); // Gọi hàm cấu hình ở đây
   app.use('/api/auth', authRoutes);
   app.use('/api/users', userRoutes);
+  app.use('/api/leaderboard', leaderboardRoutes);
+  app.use('/api/stats', statsRoutes);
 
   // Xử lý lỗi 404 cho API
   app.use(/\/api\/.*/, (req, res) => {
