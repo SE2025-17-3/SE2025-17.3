@@ -1,58 +1,62 @@
+// frontend/src/components/PaintControls.jsx
+
 import React, { useState } from 'react';
 import './PaintControls.css';
-import { useAuth } from '../context/AuthContext.jsx'; // <-- Import useAuth
-import api from '../services/api'; // <-- Import api service
+import { useAuth } from '../context/AuthContext.jsx';
+import { useVerification } from '../context/VerificationContext.jsx'; // <-- BỔ SUNG: 1. Import hook xác minh
+import api from '../services/api';
 
-// --- SỬA ĐỔI: Nhận thêm props 'selectedPixel' và 'onPixelSelect' ---
 const PaintControls = ({ selectedColor, onColorSelect, selectedPixel, onPixelSelect, onLoginRequired }) => {
     const [isPaletteVisible, setIsPaletteVisible] = useState(false);
-    const { isLoggedIn } = useAuth(); // Lấy trạng thái đăng nhập
+    const { isLoggedIn } = useAuth();
+    const { incrementPixelCount, isVerificationRequired } = useVerification(); // <-- BỔ SUNG: 2. Lấy hàm và state từ context
 
     const colors = [
         '#FFFFFF', '#C2C2C2', '#858585', '#474747', '#000000', '#2E5094', '#3E8AE6',
         '#47D4E6', '#85E685', '#479447', '#3E8A3E', '#F7E63E', '#F7A63E', '#F76B3E',
         '#E63E3E', '#942E2E', '#E68585', '#B54794', '#853E8A'
     ];
-    
-    // --- SỬA ĐỔI: Logic khi click vào một màu (XÁC NHẬN TÔ MÀU) ---
+
     const handleColorSelect = async (color) => {
-        // 1. Cập nhật màu được chọn (UI)
-        onColorSelect(color); 
-        
-        // 2. Kiểm tra xem đã đăng nhập chưa
+        onColorSelect(color);
+
+        // <-- BỔ SUNG: 3. Chặn hành động nếu đang cần xác minh -->
+        if (isVerificationRequired) {
+            alert('Vui lòng hoàn thành xác minh "Tôi không phải là robot" để tiếp tục.');
+            return;
+        }
+
         if (!isLoggedIn) {
             alert("Bạn cần đăng nhập để tô màu!");
             onLoginRequired();
             return;
         }
 
-        // 3. Kiểm tra xem đã chọn pixel chưa
         if (!selectedPixel) {
             alert("Vui lòng chọn một pixel trên bản đồ trước khi tô màu.");
-            setIsPaletteVisible(false); // Đóng bảng màu
+            setIsPaletteVisible(false);
             return;
         }
 
-        // 4. Gửi request tô màu lên server
         try {
-            console.log(`⬆️ Gửi pixel: (${selectedPixel.gx}, ${selectedPixel.gy}) - ${color}`);
-            await api.post('/pixels', { 
-                gx: selectedPixel.gx, 
-                gy: selectedPixel.gy, 
-                color: color // Gửi màu vừa click
+            await api.post('/pixels', {
+                gx: selectedPixel.gx,
+                gy: selectedPixel.gy,
+                color: color
             });
-            // (Socket.IO event sẽ tự động cập nhật canvas)
+
+            // <-- BỔ SUNG: 4. GỌI BỘ ĐẾM SAU KHI TÔ MÀU THÀNH CÔNG -->
+            incrementPixelCount();
+            console.log("Pixel placed successfully. Counter has been incremented.");
+
         } catch (err) {
             console.error("❌ Lỗi khi gửi pixel:", err.response?.data?.message || err.message);
         }
 
-        // 5. Reset lựa chọn và đóng bảng màu
-        onPixelSelect(null); // Xóa pixel đã chọn
-        setIsPaletteVisible(false); // Đóng bảng màu
+        onPixelSelect(null);
+        setIsPaletteVisible(false);
     };
 
-    // --- SỬA ĐỔI: Logic của nút "Paint" chính ---
-    // Giờ đây nó chỉ bật/tắt bảng màu
     const handlePaintButtonClick = () => {
         setIsPaletteVisible(!isPaletteVisible);
     };
@@ -62,11 +66,11 @@ const PaintControls = ({ selectedColor, onColorSelect, selectedPixel, onPixelSel
             {isPaletteVisible && (
                 <div className="color-palette">
                     {colors.map(colorSwatch => (
-                        <button 
-                            key={colorSwatch} 
-                            className={`color-swatch ${selectedColor === colorSwatch ? 'selected' : ''}`} // Thêm class 'selected'
-                            style={{ backgroundColor: colorSwatch }} 
-                            onClick={() => handleColorSelect(colorSwatch)} 
+                        <button
+                            key={colorSwatch}
+                            className={`color-swatch ${selectedColor === colorSwatch ? 'selected' : ''}`}
+                            style={{ backgroundColor: colorSwatch }}
+                            onClick={() => handleColorSelect(colorSwatch)}
                             title={colorSwatch}
                         />
                     ))}

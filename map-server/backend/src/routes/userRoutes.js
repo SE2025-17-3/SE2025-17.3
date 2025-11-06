@@ -1,19 +1,26 @@
+// backend/src/routes/userRoutes.js
+
 import express from 'express';
 import { protect } from '../middleware/authMiddleware.js';
 
+// 1. SỬA LỖI: Import đúng tên hàm là 'verifyRecaptcha'
+import { verifyRecaptcha } from '../middleware/captchaMiddleware.js';
+
 const router = express.Router();
 
-/**
- * @desc    Lấy thông tin profile của user đang đăng nhập
- * @route   GET /api/users/me
- * @access  Private
- */
+// Route lấy thông tin người dùng (giữ nguyên)
 const getMe = (req, res) => {
-  // Middleware 'protect' đã chạy và gắn req.user
   res.status(200).json(req.user);
 };
-
-// Gắn middleware 'protect' vào route /me
 router.get('/me', protect, getMe);
+
+// Route để xác minh lại người dùng (giữ nguyên)
+const reVerifyUser = (req, res) => {
+  res.status(200).json({ message: 'User re-verified successfully.' });
+};
+
+// 2. SỬA LỖI: Sử dụng đúng tên hàm middleware là 'verifyRecaptcha'
+// Logic xác minh lại giờ đây sẽ dùng chung reCAPTCHA v2
+router.post('/re-verify', protect, verifyRecaptcha, reVerifyUser);
 
 export default router;
