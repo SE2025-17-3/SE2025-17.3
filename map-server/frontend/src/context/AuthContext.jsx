@@ -1,3 +1,4 @@
+// frontend/src/context/AuthContext.jsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import api from '../services/api'; // Import axios instance
 
@@ -11,13 +12,11 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
-  
-  // --- STATE MỚI CHO MODAL ---
+
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  
+
   const openAuthModal = () => setIsAuthModalOpen(true);
   const closeAuthModal = () => setIsAuthModalOpen(false);
-  // -------------------------
 
   const checkAuthStatus = async () => {
     try {
@@ -37,14 +36,16 @@ export const AuthProvider = ({ children }) => {
     checkAuthStatus();
   }, []);
 
-  // Cập nhật hàm register (4 trường)
-  const register = async (username, email, password, confirmPassword) => {
-    await api.post('/auth/register', { username, email, password, confirmPassword });
+  // --- SỬA LỖI: Cập nhật hàm register để nhận 1 object duy nhất ---
+  const register = async (userData) => {
+    // Gửi toàn bộ object userData (đã chứa recaptchaToken) đến backend
+    await api.post('/auth/register', userData);
   };
 
-  // Cập nhật hàm login (2 trường)
-  const login = async (username, password) => {
-    const { data } = await api.post('/auth/login', { username, password });
+  // --- SỬA LỖI: Cập nhật hàm login để nhận 1 object duy nhất ---
+  const login = async (userData) => {
+    // Gửi toàn bộ object userData (đã chứa recaptchaToken) đến backend
+    const { data } = await api.post('/auth/login', userData);
     setUser(data.user);
     setIsLoggedIn(true);
     closeAuthModal(); // Tự động đóng modal sau khi login thành công
@@ -60,18 +61,17 @@ export const AuthProvider = ({ children }) => {
     user,
     isLoggedIn,
     loading,
-    isAuthModalOpen, // <-- Expose state
-    openAuthModal,   // <-- Expose hàm
-    closeAuthModal,  // <-- Expose hàm
+    isAuthModalOpen,
+    openAuthModal,
+    closeAuthModal,
     register,
     login,
     logout,
   };
 
   return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
-    </AuthContext.Provider>
+      <AuthContext.Provider value={value}>
+        {!loading && children}
+      </AuthContext.Provider>
   );
 };
-
