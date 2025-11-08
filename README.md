@@ -1,8 +1,5 @@
 # Hệ thống bản đồ pixel (Pixel Map System)
 
-Đây là Báo cáo Học phần **Công nghệ phần mềm**
-Trường Đại học Khoa học Tự nhiên - ĐHQGHN.
-
 * **Đề tài:** Hệ thống bản đồ pixel
 * **Giảng viên:** Bùi Sỹ Nguyên
 
