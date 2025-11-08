@@ -4,7 +4,6 @@
 Trường Đại học Khoa học Tự nhiên - ĐHQGHN.
 
 * **Đề tài:** Hệ thống bản đồ pixel
-* **Sinh viên thực hiện:** Vũ Quang Huy - 22001596
 * **Giảng viên:** Bùi Sỹ Nguyên
 
 ---
