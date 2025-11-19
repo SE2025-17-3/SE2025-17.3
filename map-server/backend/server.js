@@ -1,3 +1,4 @@
+// backend/server.js
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
@@ -35,9 +36,9 @@ const sessionConfig = {
     collectionName: 'sessions'
   }),
   cookie: {
-    httpOnly: true, 
-    secure: process.env.NODE_ENV === 'production', 
-    sameSite: 'lax', 
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
     maxAge: 1000 * 60 * 60 * 24 // 1 ngày
   },
   name: SESSION_NAME
@@ -47,11 +48,11 @@ const sessionConfig = {
 app.use(session(sessionConfig));
 
 // --- Cấu hình Socket.IO ---
-const io = new Server(server, { 
-    cors: { 
-        origin: FRONTEND_URL, 
-        credentials: true 
-    } 
+const io = new Server(server, {
+    cors: {
+        origin: FRONTEND_URL,
+        credentials: true
+    }
 });
 
 // Gắn session middleware vào Socket.IO
@@ -66,7 +67,7 @@ io.on('connection', (socket) => {
 });
 
 // --- Cấu hình Routes (sau khi đã cài tất cả middleware) ---
-app.configureRoutes(io); 
+app.configureRoutes(io);
 
 // --- Khởi động Server ---
 server.listen(PORT, () => console.log(`✅ Server đang chạy trên port ${PORT}`));
