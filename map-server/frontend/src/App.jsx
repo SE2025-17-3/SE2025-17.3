@@ -3,11 +3,16 @@
 import React, { useState } from 'react';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+
+// Import các component
 import GlobalCanvasGrid from './components/GlobalCanvasGrid.jsx';
 import PaintControls from './components/PaintControls.jsx';
 import AuthModal from './components/AuthModal.jsx';
 import Profile from './components/Profile.jsx';
+import VerificationModal from './components/VerificationModal.jsx';
+// Import các hook và hằng số
 import { useAuth } from './context/AuthContext.jsx';
+import { useVerification } from './context/VerificationContext.jsx';
 import { WORLD_BOUNDS } from './config/constants';
 
 // --- SỬA ĐỔI CHÍNH Ở ĐÂY ---
@@ -38,13 +43,19 @@ const AuthControls = () => {
 // Component App chính (Không cần thay đổi)
 const App = () => {
     const { isAuthModalOpen, closeAuthModal, openAuthModal } = useAuth();
+    const { isVerificationRequired } = useVerification(); // <-- BỔ SUNG: Lấy trạng thái yêu cầu xác minh
+
     const [selectedColor, setSelectedColor] = useState('#000000');
     const [selectedPixel, setSelectedPixel] = useState(null);
 
     return (
         <div style={{ position: 'relative', height: '100vh', width: '100vw' }}>
 
+            {/* Hiển thị modal đăng nhập khi cần */}
             {isAuthModalOpen && <AuthModal onClose={closeAuthModal} />}
+
+            {/* <-- BỔ SUNG: Hiển thị modal xác minh khi cần --> */}
+            {isVerificationRequired && <VerificationModal />}
 
             <MapContainer
                 center={[20, 0]}
