@@ -68,7 +68,7 @@ export const getTopTeams = async (req, res) => {
     const { period = 'all', limit = '50' } = req.query;
     const { start, end } = getDateRange(period);
     const match = {};
-  if (start) match.createdAt = { $gte: start, $lte: end || new Date() };
+    if (start) match.createdAt = { $gte: start, $lte: end || new Date() };
 
     // We only count pixels that have a user with a teamId
     const pipeline = [
@@ -100,7 +100,7 @@ export const getLeaderboardCombined = async (req, res) => {
     const { period = 'all', limit = '10' } = req.query;
     const { start, end } = getDateRange(period);
     const matchBase = {};
-  if (start) matchBase.createdAt = { $gte: start, $lte: end || new Date() };
+    if (start) matchBase.createdAt = { $gte: start, $lte: end || new Date() };
 
     const limitVal = limitNumber(limit, 10, 50);
 

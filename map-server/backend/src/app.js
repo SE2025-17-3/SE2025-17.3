@@ -1,10 +1,8 @@
 // backend/src/app.js
 import express from 'express';
 import cors from 'cors';
-// Import routes
-import pixelRoutes from './routes/pixelRoutes.js';
-import path from 'path'; // <-- DÒNG 1: Import module 'path'
-import { fileURLToPath } from 'url'; // <-- DÒNG 2: Import module 'fileURLToPath'
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Import hàm cấu hình routes, không phải router trực tiếp
 import configurePixelRoutes from './routes/pixelRoutes.js';
@@ -35,14 +33,9 @@ const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, '..', 'public')));
 // -----------------------------------------------------------------
 
-// Configure routes (session middleware will be added before this in server.js)
-app.configureRoutes = () => {
-  app.use('/api/pixels', pixelRoutes); // No longer needs io parameter
-
 // Lưu hàm cấu hình để server.js sử dụng
 app.configureRoutes = (io) => {
   // Gắn io vào mỗi request để các controller có thể sử dụng nếu cần
-  // (Đây là một cách thực hành tốt)
   app.use((req, res, next) => {
     req.io = io;
     next();
