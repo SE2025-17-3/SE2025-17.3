@@ -32,9 +32,32 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // useEffect để kiểm tra trạng thái đăng nhập khi app khởi động
   useEffect(() => {
+    // Biến cờ này giúp ngăn việc cập nhật state trên component đã bị unmount
+    // rất hữu ích để tránh lỗi trong React 18 Strict Mode
+    let isMounted = true;
+
+    const checkAuthStatus = async () => {
+      try {
+        const { data } = await api.get('/users/me');
+        if (isMounted) {
+          setUser(data);
+          setIsLoggedIn(true);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setUser(null);
+          setIsLoggedIn(false);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
     checkAuthStatus();
-  }, []);
 
   // --- SỬA LỖI: Cập nhật hàm register để nhận 1 object duy nhất ---
   const register = async (userData) => {
@@ -48,15 +71,28 @@ export const AuthProvider = ({ children }) => {
     const { data } = await api.post('/auth/login', userData);
     setUser(data.user);
     setIsLoggedIn(true);
-    closeAuthModal(); // Tự động đóng modal sau khi login thành công
+    closeAuthModal();
   };
 
+  // Hàm đăng xuất
   const logout = async () => {
-    await api.post('/auth/logout');
-    setUser(null);
-    setIsLoggedIn(false);
+    try {
+      await api.post('/auth/logout');
+    } catch (error) {
+      console.error("Lỗi API khi đăng xuất, nhưng vẫn xóa session phía client:", error);
+    } finally {
+      setUser(null);
+      setIsLoggedIn(false);
+    }
   };
 
+  // --- HÀM QUAN TRỌNG ĐÃ ĐƯỢC KẾT HỢP ---
+  // Cập nhật thông tin user trong context sau khi chỉnh sửa profile thành công
+  const updateUserContext = (newUserData) => {
+    setUser(newUserData);
+  };
+
+  // Tạo đối tượng value để cung cấp cho các component con
   const value = {
     user,
     isLoggedIn,
@@ -67,6 +103,7 @@ export const AuthProvider = ({ children }) => {
     register,
     login,
     logout,
+    updateUserContext, // <-- Đã thêm vào
   };
 
   return (
