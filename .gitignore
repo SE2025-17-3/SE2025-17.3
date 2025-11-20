@@ -76,5 +76,6 @@ coverage/
 junit.xml
 reports/
 
-# Optional: ignore Markdown docs (uncomment if desired)
-#
+# Markdown files (documentation)
+*.md
+!README.md
