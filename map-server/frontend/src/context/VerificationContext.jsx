@@ -10,6 +10,7 @@ export const VerificationProvider = ({ children }) => {
     const [isVerificationRequired, setVerificationRequired] = useState(false);
     const PIXEL_LIMIT = 50; // Giới hạn số pixel
     const TIME_LIMIT = 15 * 60 * 1000; // 15 phút
+    //const TIME_LIMIT = 30 * 1000; 
 
     // Đếm thời gian
     useEffect(() => {

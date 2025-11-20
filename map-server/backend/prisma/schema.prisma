@@ -70,3 +70,19 @@ model Session {
   
   @@map("sessions")
 }
+
+// PixelEvent Model (for leaderboard tracking)
+model PixelEvent {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  gx        Int
+  gy        Int
+  color     String
+  userId    String?  @db.ObjectId
+  teamId    String?  @db.ObjectId
+  createdAt DateTime @default(now())
+  
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([teamId, createdAt])
+  @@map("pixelevents")
+}

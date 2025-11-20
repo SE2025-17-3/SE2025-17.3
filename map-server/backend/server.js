@@ -69,7 +69,7 @@ io.on('connection', (socket) => {
 });
 
 // --- Cấu hình Routes (sau khi đã cài tất cả middleware) ---
-app.configureRoutes(); // No longer needs io parameter
+app.configureRoutes(io); // Pass io to routes for Socket.IO events
 
 // --- Khởi động Workers (Outbox Pattern) ---
 const outboxPublisher = getOutboxPublisher({
