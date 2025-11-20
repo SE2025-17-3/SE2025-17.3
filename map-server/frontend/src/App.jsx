@@ -15,25 +15,32 @@ import { useAuth } from './context/AuthContext.jsx';
 import { useVerification } from './context/VerificationContext.jsx';
 import { WORLD_BOUNDS } from './config/constants';
 
-// Nút đăng nhập/profile đặt ở góc
+// --- SỬA ĐỔI CHÍNH Ở ĐÂY ---
+// Component này quyết định hiển thị nút Đăng nhập hay Profile
 const AuthControls = () => {
     const { isLoggedIn, user, openAuthModal } = useAuth();
 
-    if (isLoggedIn && user) {
-        return <Profile />;
-    }
-
+    // Cấu trúc nhất quán: Luôn có một div bao bọc để định vị
     return (
-        <button
-            onClick={openAuthModal}
-            className="absolute top-4 right-4 z-[1000] bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md"
-        >
-            Đăng nhập
-        </button>
+        <div className="absolute top-4 right-4 z-[1000]">
+            {isLoggedIn && user ? (
+                // Nếu đã đăng nhập, hiển thị Profile bên trong div
+                <Profile />
+            ) : (
+                // Nếu chưa, hiển thị nút Đăng nhập bên trong div
+                <button
+                    onClick={openAuthModal}
+                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md"
+                >
+                    Đăng nhập
+                </button>
+            )}
+        </div>
     );
 };
 
-// Component App chính
+
+// Component App chính (Không cần thay đổi)
 const App = () => {
     const { isAuthModalOpen, closeAuthModal, openAuthModal } = useAuth();
     const { isVerificationRequired } = useVerification(); // <-- BỔ SUNG: Lấy trạng thái yêu cầu xác minh
@@ -63,7 +70,6 @@ const App = () => {
                 <TileLayer
                     url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                    noWrap={true}
                 />
 
                 <GlobalCanvasGrid

@@ -2,17 +2,25 @@
 
 import express from 'express';
 import { protect } from '../middleware/authMiddleware.js';
+import {
+  getUserProfile,
+  updateUserProfile,
+  uploadUserAvatar
+} from '../controllers/userController.js';
 
 // 1. SỬA LỖI: Import đúng tên hàm là 'verifyRecaptcha'
 import { verifyRecaptcha } from '../middleware/captchaMiddleware.js';
 
 const router = express.Router();
 
-// Route lấy thông tin người dùng (giữ nguyên)
-const getMe = (req, res) => {
-  res.status(200).json(req.user);
-};
-router.get('/me', protect, getMe);
+router.get('/me', protect, getUserProfile);
+
+router.patch(
+    '/profile',
+    protect,
+    uploadUserAvatar,
+    updateUserProfile
+);
 
 // Route để xác minh lại người dùng (giữ nguyên)
 const reVerifyUser = (req, res) => {

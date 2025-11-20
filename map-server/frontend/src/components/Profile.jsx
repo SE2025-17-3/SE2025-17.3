@@ -1,45 +1,42 @@
-import React from 'react';
+// frontend/src/components/Profile.jsx
+import React, { useState } from 'react';
+import './Profile.css';
+import EditProfileModal from './EditProfileModal';
 import { useAuth } from '../context/AuthContext';
 
 const Profile = () => {
-  const { user, logout } = useAuth();
+    const { user, logout } = useAuth();
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
-  if (!user) return null; // Không hiển thị gì nếu không có user
+    // Sửa lỗi: Khai báo biến API_URL
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
-  return (
-    <div 
-      style={{
-        position: 'absolute',
-        top: '1rem',
-        right: '1rem',
-        zIndex: 1000,
-        backgroundColor: 'white',
-        padding: '0.75rem 1rem',
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        fontFamily: 'Inter, sans-serif'
-      }}
-    >
-      <p style={{ margin: 0, fontWeight: 500, color: '#333' }}>
-        Chào, <span style={{ fontWeight: 700, color: '#3498db' }}>{user.username}</span>!
-      </p>
-      <button
-        onClick={logout}
-        style={{
-          background: 'none',
-          border: 'none',
-          color: '#d9534f',
-          cursor: 'pointer',
-          padding: '0.25rem 0 0 0', // Căn lề
-          fontSize: '0.875rem',
-          fontWeight: 500
-        }}
-      >
-        Đăng Xuất
-      </button>
-    </div>
-  );
+    const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+    const openModal = () => { setIsModalOpen(true); setIsMenuOpen(false); };
+    const closeModal = () => setIsModalOpen(false);
+
+    if (!user) return null;
+
+    return (
+        <div className="profile-container">
+            <div className="profile-header" onClick={toggleMenu}>
+                <img
+                    src={`${API_URL}${user.avatarUrl}`}
+                    alt={user.displayName}
+                    className="avatar"
+                />
+                <span className="username">Chào, {user.displayName}</span>
+            </div>
+            {isMenuOpen && (
+                <div className="profile-menu">
+                    <button onClick={openModal}>Chỉnh sửa hồ sơ</button>
+                    <button onClick={logout}>Đăng xuất</button>
+                </div>
+            )}
+            {isModalOpen && <EditProfileModal closeModal={closeModal} />}
+        </div>
+    );
 };
 
 export default Profile;
-
