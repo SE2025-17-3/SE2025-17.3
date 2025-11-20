@@ -59,6 +59,12 @@ export const AuthProvider = ({ children }) => {
 
     checkAuthStatus();
 
+    // Cleanup function để ngăn memory leak
+    return () => {
+      isMounted = false;
+    };
+  }, []); // Chỉ chạy 1 lần khi component mount
+
   // --- SỬA LỖI: Cập nhật hàm register để nhận 1 object duy nhất ---
   const register = async (userData) => {
     // Gửi toàn bộ object userData (đã chứa recaptchaToken) đến backend

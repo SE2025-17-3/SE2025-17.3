@@ -1,6 +1,5 @@
 import mongoose from 'mongoose';
 import Pixel from '../models/Pixel.js';
-import Outbox from '../models/Outbox.js';
 import PixelEvent from '../models/PixelEvent.js';
 import User from '../models/User.js';
 
@@ -34,10 +33,9 @@ export const getChunk = async (req, res) => {
 };
 
 /**
- * Add pixel using Outbox Pattern with MongoDB Transaction
- * Guarantees that pixel is saved AND event is queued for publishing
+ * Add pixel with userId and teamId tracking
  */
-export const addPixel = async (req, res) => {
+export const addPixel = async (req, res, io) => {
   const { gx, gy, color } = req.body;
 
   // Input Validation
@@ -48,49 +46,11 @@ export const addPixel = async (req, res) => {
     return res.status(400).json({ error: "Mã màu không hợp lệ (cần dạng #rrggbb)." });
   }
 
-  // Start MongoDB session for transaction
-  const session = await mongoose.startSession();
-  
   try {
-    // Execute transaction
-    const result = await session.withTransaction(async () => {
-      // 1. Save/Update pixel in database
-      const updatedPixel = await Pixel.findOneAndUpdate(
-        { gx, gy },
-        { color },
-        { 
-          new: true, 
-          upsert: true, 
-          select: 'gx gy color',
-          session // Include session for transaction
-        }
-      );
-
-      // 2. Save event to outbox (same transaction)
-      await Outbox.create([{
-        eventType: 'pixel_placed',
-        payload: {
-          gx: updatedPixel.gx,
-          gy: updatedPixel.gy,
-          color: updatedPixel.color,
-          timestamp: Date.now(),
-        },
-        published: false,
-      }], { session }); // Note: create with array when using session
-
-      console.log(`✅ Pixel saved & event queued: (${updatedPixel.gx}, ${updatedPixel.gy}) ${updatedPixel.color}`);
-      
-      return updatedPixel;
-    });
-
-    // Transaction successful - respond to client
-    res.status(201).json({
-      gx: result.gx,
-      gy: result.gy,
-      color: result.color,
     // Lấy userId từ session (nếu có)
     const userId = req.session?.userId || null;
     let teamId = null;
+    
     if (userId) {
       const user = await User.findById(userId).select('teamId');
       teamId = user?.teamId || null;
@@ -112,35 +72,32 @@ export const addPixel = async (req, res) => {
 
     // --- ⭐ Quan trọng: Gửi sự kiện Socket.IO ---
     if (io && updatedPixel) { // Kiểm tra io tồn tại
-        io.emit('pixel_placed', { 
-            gx: updatedPixel.gx, 
-            gy: updatedPixel.gy, 
-            color: updatedPixel.color,
-            userId: updatedPixel.userId // Gửi thông tin user để client có thể hiển thị
-        });
-        console.log(`📡 Emitted pixel_placed: (${updatedPixel.gx}, ${updatedPixel.gy}) ${updatedPixel.color} by user ${updatedPixel.userId || 'anonymous'}`);
+      io.emit('pixel_placed', { 
+        gx: updatedPixel.gx, 
+        gy: updatedPixel.gy, 
+        color: updatedPixel.color,
+        userId: updatedPixel.userId // Gửi thông tin user để client có thể hiển thị
+      });
+      console.log(`📡 Emitted pixel_placed: (${updatedPixel.gx}, ${updatedPixel.gy}) ${updatedPixel.color} by user ${updatedPixel.userId || 'anonymous'}`);
     } else if (!io) {
-        console.warn("⚠️ Không tìm thấy instance 'io' để emit sự kiện pixel_placed.");
+      console.warn("⚠️ Không tìm thấy instance 'io' để emit sự kiện pixel_placed.");
     }
     // ------------------------------------------
 
     res.status(201).json({ 
-        gx: updatedPixel.gx, 
-        gy: updatedPixel.gy, 
-        color: updatedPixel.color,
-        userId: updatedPixel.userId
+      gx: updatedPixel.gx, 
+      gy: updatedPixel.gy, 
+      color: updatedPixel.color,
+      userId: updatedPixel.userId
     });
 
   } catch (err) {
-    console.error("❌ Transaction failed:", err);
+    console.error("❌ Lỗi khi đặt pixel:", err);
     
     if (err.name === 'ValidationError') {
       return res.status(400).json({ error: err.message });
     }
     
     res.status(500).json({ error: "Không thể đặt pixel trên server." });
-  } finally {
-    // Always end the session
-    await session.endSession();
   }
 };
