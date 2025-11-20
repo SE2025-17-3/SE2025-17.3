@@ -1,3 +1,4 @@
+// frontend/src/context/AuthContext.jsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import api from '../services/api'; // Import axios instance
 
@@ -11,13 +12,11 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
-  
-  // --- STATE MỚI CHO MODAL ---
+
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  
+
   const openAuthModal = () => setIsAuthModalOpen(true);
   const closeAuthModal = () => setIsAuthModalOpen(false);
-  // -------------------------
 
   const checkAuthStatus = async () => {
     try {
@@ -33,45 +32,83 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // useEffect để kiểm tra trạng thái đăng nhập khi app khởi động
   useEffect(() => {
-    checkAuthStatus();
-  }, []);
+    // Biến cờ này giúp ngăn việc cập nhật state trên component đã bị unmount
+    // rất hữu ích để tránh lỗi trong React 18 Strict Mode
+    let isMounted = true;
 
-  // Cập nhật hàm register (4 trường)
-  const register = async (username, email, password, confirmPassword) => {
-    await api.post('/auth/register', { username, email, password, confirmPassword });
+    const checkAuthStatus = async () => {
+      try {
+        const { data } = await api.get('/users/me');
+        if (isMounted) {
+          setUser(data);
+          setIsLoggedIn(true);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setUser(null);
+          setIsLoggedIn(false);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    checkAuthStatus();
+
+  // --- SỬA LỖI: Cập nhật hàm register để nhận 1 object duy nhất ---
+  const register = async (userData) => {
+    // Gửi toàn bộ object userData (đã chứa recaptchaToken) đến backend
+    await api.post('/auth/register', userData);
   };
 
-  // Cập nhật hàm login (2 trường)
-  const login = async (username, password) => {
-    const { data } = await api.post('/auth/login', { username, password });
+  // --- SỬA LỖI: Cập nhật hàm login để nhận 1 object duy nhất ---
+  const login = async (userData) => {
+    // Gửi toàn bộ object userData (đã chứa recaptchaToken) đến backend
+    const { data } = await api.post('/auth/login', userData);
     setUser(data.user);
     setIsLoggedIn(true);
-    closeAuthModal(); // Tự động đóng modal sau khi login thành công
+    closeAuthModal();
   };
 
+  // Hàm đăng xuất
   const logout = async () => {
-    await api.post('/auth/logout');
-    setUser(null);
-    setIsLoggedIn(false);
+    try {
+      await api.post('/auth/logout');
+    } catch (error) {
+      console.error("Lỗi API khi đăng xuất, nhưng vẫn xóa session phía client:", error);
+    } finally {
+      setUser(null);
+      setIsLoggedIn(false);
+    }
   };
 
+  // --- HÀM QUAN TRỌNG ĐÃ ĐƯỢC KẾT HỢP ---
+  // Cập nhật thông tin user trong context sau khi chỉnh sửa profile thành công
+  const updateUserContext = (newUserData) => {
+    setUser(newUserData);
+  };
+
+  // Tạo đối tượng value để cung cấp cho các component con
   const value = {
     user,
     isLoggedIn,
     loading,
-    isAuthModalOpen, // <-- Expose state
-    openAuthModal,   // <-- Expose hàm
-    closeAuthModal,  // <-- Expose hàm
+    isAuthModalOpen,
+    openAuthModal,
+    closeAuthModal,
     register,
     login,
     logout,
+    updateUserContext, // <-- Đã thêm vào
   };
 
   return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
-    </AuthContext.Provider>
+      <AuthContext.Provider value={value}>
+        {!loading && children}
+      </AuthContext.Provider>
   );
 };
-

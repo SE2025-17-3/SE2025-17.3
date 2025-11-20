@@ -1,3 +1,4 @@
+// backend/server.js
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
@@ -37,9 +38,9 @@ const sessionConfig = {
     collectionName: 'sessions'
   }),
   cookie: {
-    httpOnly: true, 
-    secure: process.env.NODE_ENV === 'production', 
-    sameSite: 'lax', 
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
     maxAge: 1000 * 60 * 60 * 24 // 1 ngày
   },
   name: SESSION_NAME
@@ -49,11 +50,11 @@ const sessionConfig = {
 app.use(session(sessionConfig));
 
 // --- Cấu hình Socket.IO ---
-const io = new Server(server, { 
-    cors: { 
-        origin: FRONTEND_URL, 
-        credentials: true 
-    } 
+const io = new Server(server, {
+    cors: {
+        origin: FRONTEND_URL,
+        credentials: true
+    }
 });
 
 // Gắn session middleware vào Socket.IO
