@@ -41,10 +41,25 @@ prisma/*.db-journal
 .idea/
 *.swp
 *.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
 
 # Package manager caches
 .pnpm-store/
