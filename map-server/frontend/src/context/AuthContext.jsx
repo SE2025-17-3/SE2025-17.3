@@ -1,5 +1,4 @@
 // frontend/src/context/AuthContext.jsx
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import api from '../services/api'; // Import axios instance
 
@@ -14,11 +13,24 @@ export const AuthProvider = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // State quản lý Auth Modal
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const openAuthModal = () => setIsAuthModalOpen(true);
   const closeAuthModal = () => setIsAuthModalOpen(false);
+
+  const checkAuthStatus = async () => {
+    try {
+      setLoading(true);
+      const { data } = await api.get('/users/me');
+      setUser(data);
+      setIsLoggedIn(true);
+    } catch (error) {
+      setUser(null);
+      setIsLoggedIn(false);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // useEffect để kiểm tra trạng thái đăng nhập khi app khởi động
   useEffect(() => {
@@ -47,25 +59,16 @@ export const AuthProvider = ({ children }) => {
 
     checkAuthStatus();
 
-    // Hàm dọn dẹp: sẽ chạy khi component unmount
-    return () => {
-      isMounted = false;
-    };
-  }, []); // Mảng rỗng đảm bảo chỉ chạy 1 lần
-
-  // Hàm đăng ký, có thể ném lỗi để form xử lý
-  const register = async (username, email, password, confirmPassword) => {
-    try {
-      await api.post('/auth/register', { username, email, password, confirmPassword });
-    } catch (error) {
-      // Ném lỗi ra ngoài để component form có thể bắt và hiển thị
-      throw error;
-    }
+  // --- SỬA LỖI: Cập nhật hàm register để nhận 1 object duy nhất ---
+  const register = async (userData) => {
+    // Gửi toàn bộ object userData (đã chứa recaptchaToken) đến backend
+    await api.post('/auth/register', userData);
   };
 
-  // Hàm đăng nhập
-  const login = async (username, password) => {
-    const { data } = await api.post('/auth/login', { username, password });
+  // --- SỬA LỖI: Cập nhật hàm login để nhận 1 object duy nhất ---
+  const login = async (userData) => {
+    // Gửi toàn bộ object userData (đã chứa recaptchaToken) đến backend
+    const { data } = await api.post('/auth/login', userData);
     setUser(data.user);
     setIsLoggedIn(true);
     closeAuthModal();
@@ -105,7 +108,6 @@ export const AuthProvider = ({ children }) => {
 
   return (
       <AuthContext.Provider value={value}>
-        {/* Chỉ hiển thị app sau khi đã kiểm tra xong auth status */}
         {!loading && children}
       </AuthContext.Provider>
   );
