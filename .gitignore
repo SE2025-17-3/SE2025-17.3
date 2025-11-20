@@ -1,24 +1,42 @@
-# Dependencies
+# Node
 node_modules/
+dist/
+build/
+lib/
+.tmp/
+tmp/
+temp/
+.cache/
+.nyc_output/
+
+# Logs
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Environment variables
+# TypeScript
+*.tsbuildinfo
+
+# Coverage
+coverage/
+
+# Env files
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+prisma/.env
 
-# Production builds
-dist/
-build/
-*.local
+# Prisma (generated and local SQLite DBs)
+src/generated/prisma/
+prisma/dev.db
+prisma/*.db*
+prisma/*.db-journal
 
-# IDE & Editors
+# Editor/IDE
 .vscode/
 .idea/
 *.swp
@@ -43,3 +61,20 @@ coverage/
 *.temp
 .cache/
 
+# Package manager caches
+.pnpm-store/
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+
+# Lint/cache
+.eslintcache
+
+# Test/report artifacts
+junit.xml
+reports/
+
+# Optional: ignore Markdown docs (uncomment if desired)
+#
