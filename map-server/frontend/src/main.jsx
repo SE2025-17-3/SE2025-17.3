@@ -8,6 +8,7 @@ import './index.css';
 // Import các provider cần thiết
 import { SocketProvider } from './context/SocketContext.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
+import { TeamProvider } from './context/TeamContext.jsx';
 //import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3'; // <-- 1. Import reCAPTCHA Provider
 import { VerificationProvider } from './context/VerificationContext.jsx'; // <-- 2. Import Verification Provider
 
@@ -22,11 +23,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         {/* XÓA THẺ BỌC NÀY */}
         {/* <GoogleReCaptchaProvider ... > */}
         <AuthProvider>
-            <VerificationProvider>
-                <SocketProvider>
-                    <App />
-                </SocketProvider>
-            </VerificationProvider>
+            <TeamProvider>
+                <VerificationProvider>
+                    <SocketProvider>
+                        <App />
+                    </SocketProvider>
+                </VerificationProvider>
+            </TeamProvider>
         </AuthProvider>
         {/* </GoogleReCaptchaProvider> */}
     </React.StrictMode>,

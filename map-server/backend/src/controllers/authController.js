@@ -54,6 +54,7 @@ export const loginUser = async (req, res) => {
       email: user.email,
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
+      teamId: user.teamId || null,
     };
 
     res.status(200).json({ message: 'Đăng nhập thành công', user: userInfo });

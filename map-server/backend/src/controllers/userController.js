@@ -40,6 +40,7 @@ export const getUserProfile = async (req, res) => {
             email: user.email,
             displayName: user.displayName,
             avatarUrl: user.avatarUrl,
+            teamId: user.teamId || null,
         });
     } else {
         res.status(404).json({ message: 'Không tìm thấy người dùng' });
@@ -67,6 +68,7 @@ export const updateUserProfile = async (req, res) => {
                 email: updatedUser.email,
                 displayName: updatedUser.displayName,
                 avatarUrl: updatedUser.avatarUrl,
+                teamId: updatedUser.teamId || null,
             });
         } else {
             res.status(404).json({ message: 'Không tìm thấy người dùng' });

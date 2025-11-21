@@ -33,6 +33,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: '/avatars/default-avatar.png',
   },
+  teamId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Team',
+    default: null,
+  },
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {

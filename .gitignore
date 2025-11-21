@@ -23,7 +23,7 @@ lerna-debug.log*
 
 # Coverage
 coverage/
-
+.sh
 # Env files
 .env
 .env.*

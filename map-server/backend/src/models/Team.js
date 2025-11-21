@@ -12,6 +12,11 @@ const teamSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
+  memberCount: {
+    type: Number,
+    default: 1,
+    min: 0,
+  },
 }, { timestamps: true });
 
 export default mongoose.model('Team', teamSchema);
