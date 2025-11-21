@@ -79,4 +79,4 @@ reports/
 # Markdown files (documentation)
 *.md
 !README.md
-.sh
+*.sh
