@@ -98,6 +98,18 @@ export const AuthProvider = ({ children }) => {
     setUser(newUserData);
   };
 
+  // Refresh user data from server (for team changes, etc.)
+  const refreshUser = async () => {
+    try {
+      const { data } = await api.get('/users/me');
+      setUser(data);
+      return data;
+    } catch (error) {
+      console.error('Error refreshing user:', error);
+      throw error;
+    }
+  };
+
   // Tạo đối tượng value để cung cấp cho các component con
   const value = {
     user,
@@ -110,6 +122,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     updateUserContext, // <-- Đã thêm vào
+    refreshUser, // <-- NEW: Refresh user from server
   };
 
   return (
