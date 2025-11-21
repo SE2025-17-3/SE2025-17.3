@@ -94,22 +94,23 @@ export const getTopTeams = async (req, res) => {
   }
 };
 
-// GET /api/leaderboard/leaderboard (combined) or /api/stats/leaderboard
+// GET /api/leaderboard (combined)
 export const getLeaderboardCombined = async (req, res) => {
   try {
-    const { period = 'all', limit = '10' } = req.query;
+    const { period = 'all', limit = '10', playersLimit, teamsLimit } = req.query;
     const { start, end } = getDateRange(period);
     const matchBase = {};
     if (start) matchBase.createdAt = { $gte: start, $lte: end || new Date() };
 
-    const limitVal = limitNumber(limit, 10, 50);
+    const playersLimitVal = limitNumber(playersLimit || limit, 10, 100);
+    const teamsLimitVal = limitNumber(teamsLimit || limit, 10, 100);
 
     // Players
     const playersPromise = PixelEvent.aggregate([
       { $match: { ...matchBase, userId: { $ne: null } } },
       { $group: { _id: '$userId', pixels: { $sum: 1 }, lastActivity: { $max: '$createdAt' } } },
       { $sort: { pixels: -1, lastActivity: -1 } },
-      { $limit: limitVal },
+      { $limit: playersLimitVal },
       { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
       { $unwind: '$user' },
       { $lookup: { from: 'teams', localField: 'user.teamId', foreignField: '_id', as: 'team' } },
@@ -125,14 +126,14 @@ export const getLeaderboardCombined = async (req, res) => {
       { $match: { 'user.teamId': { $ne: null } } },
       { $group: { _id: '$user.teamId', pixels: { $sum: 1 }, lastActivity: { $max: '$createdAt' } } },
       { $sort: { pixels: -1, lastActivity: -1 } },
-      { $limit: limitVal },
+      { $limit: teamsLimitVal },
       { $lookup: { from: 'teams', localField: '_id', foreignField: '_id', as: 'team' } },
       { $unwind: '$team' },
       { $project: { _id: 0, teamId: '$_id', teamName: '$team.name', pixels: 1, lastActivity: 1 } },
     ]);
 
     const [players, teams] = await Promise.all([playersPromise, teamsPromise]);
-    res.json({ period, players, teams });
+    res.json({ period, topPlayers: players, topTeams: teams });
   } catch (e) {
     console.error('getLeaderboardCombined error', e);
     res.status(500).json({ message: 'Server error' });
