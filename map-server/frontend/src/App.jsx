@@ -10,9 +10,13 @@ import PaintControls from './components/PaintControls.jsx';
 import AuthModal from './components/AuthModal.jsx';
 import Profile from './components/Profile.jsx';
 import VerificationModal from './components/VerificationModal.jsx';
+import Leaderboard from './components/Leaderboard.jsx';
+import TeamModal from './components/TeamModal.jsx';
+import TeamBadge from './components/TeamBadge.jsx';
 // Import các hook và hằng số
 import { useAuth } from './context/AuthContext.jsx';
 import { useVerification } from './context/VerificationContext.jsx';
+import { useTeam } from './context/TeamContext.jsx';
 import { WORLD_BOUNDS } from './config/constants';
 
 // --- SỬA ĐỔI CHÍNH Ở ĐÂY ---
@@ -42,11 +46,14 @@ const AuthControls = () => {
 
 // Component App chính (Không cần thay đổi)
 const App = () => {
-    const { isAuthModalOpen, closeAuthModal, openAuthModal } = useAuth();
+    const { isAuthModalOpen, closeAuthModal, openAuthModal, isLoggedIn } = useAuth();
     const { isVerificationRequired } = useVerification(); // <-- BỔ SUNG: Lấy trạng thái yêu cầu xác minh
+    const { currentTeam } = useTeam();
 
     const [selectedColor, setSelectedColor] = useState('#000000');
     const [selectedPixel, setSelectedPixel] = useState(null);
+    const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
+    const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
 
     return (
         <div style={{ position: 'relative', height: '100vh', width: '100vw' }}>
@@ -56,6 +63,19 @@ const App = () => {
 
             {/* <-- BỔ SUNG: Hiển thị modal xác minh khi cần --> */}
             {isVerificationRequired && <VerificationModal />}
+
+            {/* Leaderboard Modal */}
+            <Leaderboard
+                isOpen={isLeaderboardOpen}
+                onClose={() => setIsLeaderboardOpen(false)}
+            />
+
+            {/* Team Modal */}
+            <TeamModal
+                isOpen={isTeamModalOpen}
+                onClose={() => setIsTeamModalOpen(false)}
+                mode={currentTeam ? 'details' : 'list'}
+            />
 
             <MapContainer
                 center={[20, 0]}
@@ -82,6 +102,31 @@ const App = () => {
             </MapContainer>
 
             <AuthControls />
+
+            {/* Leaderboard Button - positioned under profile */}
+            <button
+                onClick={() => setIsLeaderboardOpen(true)}
+                className="absolute top-20 right-4 z-[900] bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+                title="View Leaderboard"
+            >
+                <span className="text-xl">🏆</span>
+                <span>Leaderboard</span>
+            </button>
+
+            {/* Team Button - positioned under leaderboard */}
+            <button
+                onClick={() => isLoggedIn ? setIsTeamModalOpen(true) : openAuthModal()}
+                className="absolute top-36 right-4 z-[900] bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+                title={currentTeam ? 'Manage Team' : 'Join Team'}
+            >
+                <span className="text-xl">👥</span>
+                <span>{currentTeam ? currentTeam.name : 'Teams'}</span>
+                {currentTeam && (
+                    <span className="text-xs bg-white bg-opacity-20 px-2 py-0.5 rounded-full">
+                        {currentTeam.memberCount || 0}
+                    </span>
+                )}
+            </button>
 
             <PaintControls
                 selectedColor={selectedColor}
