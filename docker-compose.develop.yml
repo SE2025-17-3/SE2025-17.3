@@ -1,0 +1,32 @@
+# docker-compose.develop.yml
+version: '3.8'
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: map-app-redis-dev
+    restart: unless-stopped
+    networks:
+      - map-app-network
+  backend:
+    image: august0508/map-app-backend:develop
+    container_name: map-app-backend-dev
+    restart: unless-stopped
+    ports:
+      - "4001:4000"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    networks:
+      - map-app-network
+  frontend:
+    image: august0508/map-app-frontend:develop
+    container_name: map-app-frontend-dev
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    networks:
+      - map-app-network
+networks:
+  map-app-network:
+    driver: bridge
