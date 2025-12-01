@@ -1,3 +1,4 @@
+// backend/src/models/User.js
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
@@ -9,7 +10,7 @@ const userSchema = new mongoose.Schema({
     trim: true,
     lowercase: true,
   },
-  email: { // <-- Đã thêm
+  email: {
     type: String,
     required: [true, 'Vui lòng nhập email'],
     unique: true,
@@ -21,11 +22,24 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Vui lòng nhập mật khẩu'],
     minlength: [6, 'Mật khẩu phải có ít nhất 6 ký tự'],
-    select: false, // Mặc định không trả về password khi truy vấn
+    select: false,
   },
-}, { timestamps: true }); // Thêm createdAt/updatedAt
+  displayName: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  avatarUrl: {
+    type: String,
+    default: '/avatars/default-avatar.png',
+  },
+  teamId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Team',
+    default: null,
+  },
+}, { timestamps: true });
 
-// Middleware: Mã hóa mật khẩu trước khi lưu
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   const salt = await bcrypt.genSalt(12);
@@ -33,10 +47,8 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
-// Method: So sánh mật khẩu
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
 export default mongoose.model('User', userSchema);
-
