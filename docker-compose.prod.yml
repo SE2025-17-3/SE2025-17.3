@@ -1,0 +1,29 @@
+# docker-compose.prod.yml
+version: '3.8'
+
+services:
+  backend:
+    # Thay bằng tên của bạn
+    image: august0508/map-app-backend:latest
+    container_name: map-app-backend
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    networks:
+      - map-app-network
+
+  frontend:
+    # Thay  bằng tên của bạn
+    image: august0508/map-app-frontend:latest
+    container_name: map-app-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    networks:
+      - map-app-network
+
+networks:
+  map-app-network:
+    driver: bridge

@@ -3,7 +3,7 @@
 Đây là Báo cáo Học phần **Công nghệ phần mềm**
 Trường Đại học Khoa học Tự nhiên - ĐHQGHN.
 
-* **Đề tài:** Hệ thống bản đồ pixel
+* **Đề tài:** Hệ thống bản đồ pixel tương tác (Pixel Map System)
 * **Giảng viên:** Bùi Sỹ Nguyên
 
 ---
