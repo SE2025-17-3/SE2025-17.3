@@ -1,0 +1,47 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # Dịch vụ Backend
+  backend:
+    build:
+      context: ./map-server/backend
+    container_name: map-app-backend
+    restart: unless-stopped
+    ports:
+      # Ánh xạ port 4000 của container ra port 4000 của server
+      - "4000:4000"
+    environment:
+      # Nạp các biến môi trường từ file .env ở thư mục gốc
+      - PORT=${PORT}
+      - NODE_ENV=${NODE_ENV}
+      - MONGO_URI=${MONGO_URI}
+      - DATABASE_URL=${DATABASE_URL}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - SESSION_NAME=${SESSION_NAME}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - RECAPTCHA_V3_SECRET_KEY=${RECAPTCHA_V3_SECRET_KEY}
+    env_file:
+      - .env # Chỉ định file .env
+    networks:
+      - map-app-network
+
+  # Dịch vụ Frontend
+  frontend:
+    build:
+      context: ./frontend
+    container_name: map-app-frontend
+    restart: unless-stopped
+    ports:
+      # Ánh xạ port 80 của container (Nginx) ra port 80 của server
+      # Giúp bạn truy cập web qua địa chỉ IP mà không cần gõ port
+      - "80:80"
+    depends_on:
+      - backend # Khởi động sau khi backend đã sẵn sàng (tùy chọn)
+    networks:
+      - map-app-network
+
+# Định nghĩa mạng chung để các container có thể giao tiếp với nhau
+networks:
+  map-app-network:
+    driver: bridge
