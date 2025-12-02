@@ -2,7 +2,7 @@
 FROM node:18-alpine as builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 COPY . .
 # Nhận biến môi trường từ lệnh build
 ARG VITE_RECAPTCHA_V2_SITE_KEY
