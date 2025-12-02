@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useMemo } from 'react';
-import io from 'socket.io-client'; // Đảm bảo dòng này vẫn ở đây
 
 
 const SocketContext = createContext(null); // Khởi tạo với null
