@@ -18,7 +18,6 @@ if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
-
 const server = createServer(app);
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const PORT = process.env.PORT || 4000;
@@ -44,7 +43,10 @@ const sessionConfig = {
   }),
   cookie: {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    // === ĐÂY LÀ THAY ĐỔI DUY NHẤT ===
+    // Tạm thời đặt là 'false' để cookie có thể hoạt động trên kết nối HTTP.
+    // CẢNH BÁO: Khi bạn chuyển sang HTTPS cho trang web, bạn PHẢI đổi lại thành 'true'.
+    secure: false, 
     sameSite: 'lax',
     maxAge: 1000 * 60 * 60 * 24 // 1 ngày
   },
@@ -152,4 +154,3 @@ server.listen(PORT, () => {
   console.log(`📡 Frontend URL: ${FRONTEND_URL}`);
   console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
-
