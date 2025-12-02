@@ -14,6 +14,11 @@ import { closeAllRedisConnections } from './src/config/redis.js';
 dotenv.config();
 connectDB();
 
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
+
 const server = createServer(app);
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const PORT = process.env.PORT || 4000;
