@@ -45,6 +45,8 @@ jobs:
           context: ./map-server/frontend
           push: true
           tags: august0508/map-app-frontend:${{ steps.get_tag.outputs.TAG }}
+          build-args: |
+            VITE_RECAPTCHA_V2_SITE_KEY=${{ secrets.VITE_RECAPTCHA_V2_SITE_KEY }}
 
   deploy:
     runs-on: ubuntu-latest
