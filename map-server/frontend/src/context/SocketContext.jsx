@@ -1,14 +1,19 @@
 import React, { createContext, useContext, useEffect } from 'react';
 import io from 'socket.io-client';
 
-// Địa chỉ backend của bạn (có thể lấy từ .env của Vite)
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+// === BƯỚC 1: Xóa hoặc comment dòng lấy BACKEND_URL ===
+// const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
 
-const socket = io(BACKEND_URL, {
-  // Tùy chọn: Tự động kết nối lại nếu mất mạng
-  reconnectionAttempts: 5, 
-  reconnectionDelay: 1000,
-}); 
+// === BƯỚC 2: Khởi tạo io() mà không có tham số URL ===
+// Khi để trống, nó sẽ tự động cố gắng kết nối đến cùng một host đã phục vụ trang web.
+// Ví dụ: Nếu bạn ở trang http://136.112.99.88, nó sẽ kết nối đến http://136.112.99.88.
+// Nginx sẽ bắt các request này và chuyển tiếp chúng đến backend.
+const socket = io({
+    // Các tùy chọn khác của bạn có thể giữ nguyên
+    reconnectionAttempts: 5, 
+    reconnectionDelay: 1000,
+});
+
 const SocketContext = createContext(socket);
 
 /**
@@ -22,11 +27,10 @@ export const useSocket = () => {
  * Component Provider để bọc ứng dụng của bạn (trong main.jsx).
  */
 export const SocketProvider = ({ children }) => {
-    // (Tùy chọn) Thêm log để biết kết nối thành công hay thất bại
     useEffect(() => {
         const handleConnect = () => console.log('🔗 Đã kết nối Socket.IO:', socket.id);
         const handleDisconnect = () => console.log('🔌 Đã ngắt kết nối Socket.IO');
-        const handleConnectError = (err) => console.error('❌ Lỗi kết nối Socket.IO:', err);
+        const handleConnectError = (err) => console.error('❌ Lỗi kết nối Socket.IO:', err.message); // In ra err.message cho gọn
 
         socket.on('connect', handleConnect);
         socket.on('disconnect', handleDisconnect);
