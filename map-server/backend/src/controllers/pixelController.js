@@ -88,47 +88,6 @@ export const addPixel = async (req, res) => {
       gx: result.gx,
       gy: result.gy,
       color: result.color,
-    // Lấy userId từ session (nếu có)
-    const userId = req.session?.userId || null;
-    let teamId = null;
-    if (userId) {
-      const user = await User.findById(userId).select('teamId');
-      teamId = user?.teamId || null;
-    }
-    
-    // Trường 'updatedAt' sẽ tự động cập nhật nhờ pre-hook trong Model
-    const updatedPixel = await Pixel.findOneAndUpdate(
-      { gx, gy },
-      { color, userId }, // Cập nhật cả color và userId
-      { new: true, upsert: true, select: 'gx gy color userId' }
-    );
-
-    // Ghi lại sự kiện vẽ pixel
-    try {
-      await PixelEvent.create({ gx, gy, color, userId, teamId });
-    } catch (evtErr) {
-      console.warn('⚠️ Không thể lưu PixelEvent:', evtErr?.message);
-    }
-
-    // --- ⭐ Quan trọng: Gửi sự kiện Socket.IO ---
-    if (io && updatedPixel) { // Kiểm tra io tồn tại
-        io.emit('pixel_placed', { 
-            gx: updatedPixel.gx, 
-            gy: updatedPixel.gy, 
-            color: updatedPixel.color,
-            userId: updatedPixel.userId // Gửi thông tin user để client có thể hiển thị
-        });
-        console.log(`📡 Emitted pixel_placed: (${updatedPixel.gx}, ${updatedPixel.gy}) ${updatedPixel.color} by user ${updatedPixel.userId || 'anonymous'}`);
-    } else if (!io) {
-        console.warn("⚠️ Không tìm thấy instance 'io' để emit sự kiện pixel_placed.");
-    }
-    // ------------------------------------------
-
-    res.status(201).json({ 
-        gx: updatedPixel.gx, 
-        gy: updatedPixel.gy, 
-        color: updatedPixel.color,
-        userId: updatedPixel.userId
     });
 
   } catch (err) {
