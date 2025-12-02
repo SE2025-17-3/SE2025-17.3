@@ -9,9 +9,7 @@ const Profile = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // Sửa lỗi: Khai báo biến API_URL
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-
+   
     const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
     const openModal = () => { setIsModalOpen(true); setIsMenuOpen(false); };
     const closeModal = () => setIsModalOpen(false);
@@ -22,7 +20,8 @@ const Profile = () => {
         <div className="profile-container">
             <div className="profile-header" onClick={toggleMenu}>
                 <img
-                    src={`${API_URL}${user.avatarUrl}`}
+                    
+                    src={user.avatarUrl}
                     alt={user.displayName}
                     className="avatar"
                 />
