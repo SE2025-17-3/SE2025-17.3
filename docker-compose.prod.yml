@@ -3,7 +3,6 @@
 version: '3.8'
 
 services:
-  # Dịch vụ Redis cho Production
   redis:
     image: redis:7-alpine
     container_name: map-app-redis-prod 
