@@ -2,39 +2,35 @@
 
 version: '3.8'
 
+networks:
+  production_network: # Mạng riêng cho production
+
 services:
-  # Dịch vụ Redis cho Production
   redis:
     image: redis:7-alpine
-    container_name: map-app-redis-prod 
+    container_name: map-app-redis-prod
     restart: unless-stopped
     networks:
-      - map-app-network
+      - production_network
 
-  # Dịch vụ Backend cho Production
   backend:
-    image: august0508/map-app-backend:latest # Sử dụng image tag ':latest' từ nhánh main
-    container_name: map-app-backend-prod 
+    image: august0508/map-app-backend:latest
+    container_name: map-app-backend-prod
     restart: unless-stopped
     ports:
-      - "4000:4000" # Có thể giữ nguyên hoặc đổi thành port khác nếu muốn
+      - "4000:4000"
     env_file:
       - .env
     depends_on:
       - redis
     networks:
-      - map-app-network
+      - production_network
 
-  # Dịch vụ Frontend cho Production
   frontend:
-    image: august0508/map-app-frontend:latest # Sử dụng image tag ':latest' từ nhánh main
-    container_name: map-app-frontend-prod 
+    image: august0508/map-app-frontend:latest
+    container_name: map-app-frontend-prod
     restart: unless-stopped
     ports:
       - "80:80"
     networks:
-      - map-app-network
-
-networks:
-  map-app-network:
-    driver: bridge
+      - production_network
