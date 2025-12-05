@@ -1,35 +1,39 @@
 # docker-compose.develop.yml
+
 version: '3.8'
 
-networks:
-  develop_network: # Định nghĩa mạng ở đây
-
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: map-app-redis-dev
-    restart: unless-stopped
-    networks:
-      - develop_network # Gán dịch vụ vào mạng
-
+  # Tên dịch vụ 'backend' này cũng phải khớp với proxy_pass trong nginx.conf
   backend:
     image: august0508/map-app-backend:develop
     container_name: map-app-backend-dev
     restart: unless-stopped
-    ports:
-      - "4001:4000"
+    networks:
+      - develop_net
     env_file:
       - .env
     depends_on:
       - redis
-    networks:
-      - develop_network # Gán dịch vụ vào mạng
 
   frontend:
     image: august0508/map-app-frontend:develop
     container_name: map-app-frontend-dev
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "8080:80" # Chạy trên cổng 8080 cho môi trường test
     networks:
-      - develop_network # Gán dịch vụ vào mạng
+      - develop_net
+    depends_on:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    container_name: map-app-redis-dev
+    restart: unless-stopped
+    networks:
+      - develop_net
+
+# Định nghĩa mạng riêng cho môi trường Develop
+networks:
+  develop_net:
+    driver: bridge
