@@ -2,35 +2,38 @@
 
 version: '3.8'
 
-networks:
-  production_network: # Mạng riêng cho production
-
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: map-app-redis-prod
-    restart: unless-stopped
-    networks:
-      - production_network
-
+  # Tên dịch vụ 'backend' này phải khớp với proxy_pass trong nginx.conf
   backend:
     image: august0508/map-app-backend:latest
     container_name: map-app-backend-prod
     restart: unless-stopped
-    ports:
-      - "4000:4000"
+    networks:
+      - production_net
     env_file:
       - .env
     depends_on:
       - redis
-    networks:
-      - production_network
 
   frontend:
     image: august0508/map-app-frontend:latest
     container_name: map-app-frontend-prod
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "80:80" # Chạy trên cổng 80 cho địa chỉ chính
     networks:
-      - production_network
+      - production_net
+    depends_on:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    container_name: map-app-redis-prod
+    restart: unless-stopped
+    networks:
+      - production_net
+
+# Định nghĩa mạng riêng cho môi trường Production
+networks:
+  production_net:
+    driver: bridge
