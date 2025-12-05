@@ -20,7 +20,7 @@ services:
     container_name: map-app-frontend-dev
     restart: unless-stopped
     ports:
-      - "8080:80" # Chạy trên cổng 8080 cho môi trường test
+      - "8081:80" # Chạy trên cổng 8080 cho môi trường test
     networks:
       - develop_net
     depends_on:
