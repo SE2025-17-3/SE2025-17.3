@@ -38,6 +38,21 @@ const userSchema = new mongoose.Schema({
     ref: 'Team',
     default: null,
   },
+  // Challenge system fields
+  challengePoints: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+  badges: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Badge',
+  }],
+  currentStreak: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {

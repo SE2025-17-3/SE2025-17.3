@@ -11,6 +11,7 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import { TeamProvider } from './context/TeamContext.jsx';
 //import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3'; // <-- 1. Import reCAPTCHA Provider
 import { VerificationProvider } from './context/VerificationContext.jsx'; // <-- 2. Import Verification Provider
+import { ChallengeProvider } from './context/ChallengeContext.jsx'; // <-- 3. Import Challenge Provider
 
 console.log("VITE_RECAPTCHA_V2_SITE_KEY:", import.meta.env.VITE_RECAPTCHA_V2_SITE_KEY);
 
@@ -26,7 +27,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <TeamProvider>
                 <VerificationProvider>
                     <SocketProvider>
-                        <App />
+                        <ChallengeProvider>
+                            <App />
+                        </ChallengeProvider>
                     </SocketProvider>
                 </VerificationProvider>
             </TeamProvider>
@@ -34,3 +37,4 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         {/* </GoogleReCaptchaProvider> */}
     </React.StrictMode>,
 );
+

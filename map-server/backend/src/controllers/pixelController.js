@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Pixel from '../models/Pixel.js';
 import PixelEvent from '../models/PixelEvent.js';
 import User from '../models/User.js';
+import * as challengeService from '../services/challengeService.js';
 
 const CHUNK_SIZE = 256;
 
@@ -50,12 +51,12 @@ export const addPixel = async (req, res, io) => {
     // Lấy userId từ session (nếu có)
     const userId = req.session?.userId || null;
     let teamId = null;
-    
+
     if (userId) {
       const user = await User.findById(userId).select('teamId');
       teamId = user?.teamId || null;
     }
-    
+
     // Trường 'updatedAt' sẽ tự động cập nhật nhờ pre-hook trong Model
     const updatedPixel = await Pixel.findOneAndUpdate(
       { gx, gy },
@@ -72,9 +73,9 @@ export const addPixel = async (req, res, io) => {
 
     // --- ⭐ Quan trọng: Gửi sự kiện Socket.IO ---
     if (io && updatedPixel) { // Kiểm tra io tồn tại
-      io.emit('pixel_placed', { 
-        gx: updatedPixel.gx, 
-        gy: updatedPixel.gy, 
+      io.emit('pixel_placed', {
+        gx: updatedPixel.gx,
+        gy: updatedPixel.gy,
         color: updatedPixel.color,
         userId: updatedPixel.userId // Gửi thông tin user để client có thể hiển thị
       });
@@ -84,20 +85,33 @@ export const addPixel = async (req, res, io) => {
     }
     // ------------------------------------------
 
-    res.status(201).json({ 
-      gx: updatedPixel.gx, 
-      gy: updatedPixel.gy, 
+    // --- Track challenge progress ---
+    if (userId) {
+      try {
+        // Update streak
+        await challengeService.updateStreak(userId, io);
+        // Track pixel action for challenges
+        await challengeService.trackPixelAction(userId, { gx, gy, color }, io);
+      } catch (challengeErr) {
+        console.warn('⚠️ Challenge tracking error:', challengeErr?.message);
+      }
+    }
+    // ---------------------------------
+
+    res.status(201).json({
+      gx: updatedPixel.gx,
+      gy: updatedPixel.gy,
       color: updatedPixel.color,
       userId: updatedPixel.userId
     });
 
   } catch (err) {
     console.error("❌ Lỗi khi đặt pixel:", err);
-    
+
     if (err.name === 'ValidationError') {
       return res.status(400).json({ error: err.message });
     }
-    
+
     res.status(500).json({ error: "Không thể đặt pixel trên server." });
   }
 };

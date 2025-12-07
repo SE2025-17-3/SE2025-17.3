@@ -12,6 +12,7 @@ import userRoutes from './routes/userRoutes.js';
 import leaderboardRoutes from './routes/leaderboardRoutes.js';
 import statsRoutes from './routes/statsRoutes.js';
 import teamRoutes from './routes/teamRoutes.js';
+import challengeRoutes from './routes/challengeRoutes.js';
 
 const app = express();
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -48,6 +49,7 @@ app.configureRoutes = (io) => {
   app.use('/api/leaderboard', leaderboardRoutes);
   app.use('/api/stats', statsRoutes);
   app.use('/api/teams', teamRoutes);
+  app.use('/api/challenges', challengeRoutes);
 
   // Xử lý lỗi 404 cho API
   app.use(/\/api\/.*/, (req, res) => {

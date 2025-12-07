@@ -13,6 +13,7 @@ import VerificationModal from './components/VerificationModal.jsx';
 import Leaderboard from './components/Leaderboard.jsx';
 import TeamModal from './components/TeamModal.jsx';
 import TeamBadge from './components/TeamBadge.jsx';
+import ChallengePanel from './components/ChallengePanel.jsx';
 // Import các hook và hằng số
 import { useAuth } from './context/AuthContext.jsx';
 import { useVerification } from './context/VerificationContext.jsx';
@@ -127,6 +128,9 @@ const App = () => {
                     </span>
                 )}
             </button>
+
+            {/* Challenge Panel */}
+            <ChallengePanel />
 
             <PaintControls
                 selectedColor={selectedColor}

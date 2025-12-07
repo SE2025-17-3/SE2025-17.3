@@ -46,7 +46,7 @@ const sessionConfig = {
     // === ĐÂY LÀ THAY ĐỔI DUY NHẤT ===
     // Tạm thời đặt là 'false' để cookie có thể hoạt động trên kết nối HTTP.
     // CẢNH BÁO: Khi bạn chuyển sang HTTPS cho trang web, bạn PHẢI đổi lại thành 'true'.
-    secure: false, 
+    secure: false,
     sameSite: 'lax',
     maxAge: 1000 * 60 * 60 * 24 // 1 ngày
   },
@@ -58,10 +58,10 @@ app.use(session(sessionConfig));
 
 // --- Cấu hình Socket.IO ---
 const io = new Server(server, {
-    cors: {
-        origin: FRONTEND_URL,
-        credentials: true
-    }
+  cors: {
+    origin: FRONTEND_URL,
+    credentials: true
+  }
 });
 
 // Gắn session middleware vào Socket.IO
@@ -70,8 +70,14 @@ io.use(wrap(session(sessionConfig)));
 
 io.on('connection', (socket) => {
   console.log('🟢 Client đã kết nối:', socket.id);
-  // (Nâng cao) Giờ bạn có thể truy cập session:
-  // console.log('Session của socket:', socket.request.session?.userId);
+
+  // Join user to their personal room for challenge events
+  const userId = socket.request.session?.userId;
+  if (userId) {
+    socket.join(userId.toString());
+    console.log(`   👤 User ${userId} joined personal room`);
+  }
+
   socket.on('disconnect', () => console.log('🔴 Client đã ngắt kết nối:', socket.id));
 });
 
@@ -105,7 +111,7 @@ const streamConsumer = new StreamConsumer(io, {
 // --- Graceful Shutdown ---
 const gracefulShutdown = async (signal) => {
   console.log(`\n🛑 ${signal} received. Starting graceful shutdown...`);
-  
+
   try {
     // Stop accepting new connections
     server.close(() => {
