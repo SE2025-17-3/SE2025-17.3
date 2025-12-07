@@ -70,7 +70,7 @@ const GlobalCanvasGrid = ({ onLoginRequired, selectedPixel, onPixelSelect }) => 
                     api.get(`/pixels/chunk/${x}/${y}`)
                         .then((res) => {
                             const chunkData = res.data;
-                            if(Array.isArray(chunkData)) {
+                            if (Array.isArray(chunkData)) {
                                 setPixels((prev) => {
                                     const newMap = new Map(prev);
                                     chunkData.forEach((p) => newMap.set(`${p.gx}:${p.gy}`, p.color));
