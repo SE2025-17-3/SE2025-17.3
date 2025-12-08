@@ -1,40 +1,45 @@
+// D:\Code\SE2025-17.3\map-server\backend\src\models\Pixel.js
 import mongoose from 'mongoose';
 
 const pixelSchema = new mongoose.Schema({
   gx: { 
     type: Number, 
-    required: true,
-    index: true // Index đơn để query nhanh
+    required: true 
   },
   gy: { 
     type: Number, 
-    required: true,
-    index: true 
+    required: true 
   },
   color: { 
     type: String, 
-    required: true,
-    // Bỏ validation Regex quá chặt ở đây để tránh lỗi lưu DB.
-    // Việc validate màu nên để Controller lo.
-    default: '#FFFFFF'
+    default: '#FFFFFF', // Đổi thành màu trắng mặc định hoặc màu nền của bạn
+    match: [/^#[0-9a-fA-F]{6}$/, 'Mã màu không hợp lệ (#rrggbb)'] 
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
+    required: false, // Cho phép pixel anonymous (không bắt buộc phải đăng nhập)
     default: null
+  },
+  updatedAt: { // <-- Thêm trường này
+    type: Date,
+    default: Date.now,
   }
-}, { 
-  // Tự động tạo createdAt và updatedAt
-  timestamps: true 
 });
 
-// --- INDEX KÉP QUAN TRỌNG NHẤT ---
-// Giúp tìm kiếm chính xác tọa độ và đảm bảo 1 tọa độ chỉ có 1 pixel
+// Index để tìm kiếm nhanh theo tọa độ (quan trọng!)
 pixelSchema.index({ gx: 1, gy: 1 }, { unique: true });
-
-// Index phụ trợ
+// Index theo thời gian (hữu ích sau này)
 pixelSchema.index({ updatedAt: -1 }); 
+// Index theo userId để track pixels của từng user
 pixelSchema.index({ userId: 1 }); 
 
-const Pixel = mongoose.model('Pixel', pixelSchema);
-export default Pixel;
+// Middleware để tự động cập nhật 'updatedAt' trước khi lưu
+pixelSchema.pre('findOneAndUpdate', function(next) {
+  this.set({ updatedAt: new Date() }); // Cập nhật trường updatedAt
+  next();
+});
+
+// Lưu ý: findOneAndUpdate sẽ không tự trigger pre('save') hook
+
+export default mongoose.model('Pixel', pixelSchema);
