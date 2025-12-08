@@ -9,13 +9,13 @@ const getBaseUrl = () => {
   // Lấy chính domain hiện tại (http://136.112.99.88)
   // Nginx sẽ tự điều hướng các path như /auth, /users vào backend
   if (import.meta.env.PROD) {
-    return window.location.origin;
+    return window.location.origin + '/api' ;
   }
 
   // 3. Môi trường Dev (Localhost)
   // Lưu ý: Nếu server local của bạn không dùng prefix /api, hãy xóa đuôi /api đi
   // Dựa vào server.js bạn gửi lúc đầu, có vẻ bạn không dùng prefix /api global.
-  return 'http://localhost:4000';
+  return 'http://localhost:4000/api';
 };
 
 const api = axios.create({
