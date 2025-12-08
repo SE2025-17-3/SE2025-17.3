@@ -85,9 +85,7 @@ jobs:
             echo "DATABASE_URL=${{ secrets.MONGO_URI }}" >> .env
             echo "SESSION_SECRET=${{ secrets.SESSION_SECRET }}" >> .env
             
-            # Lưu ý: Code backend của bạn đang dùng tên biến là RECAPTCHA_V3_SECRET_KEY
-            # Nhưng trong Secrets bạn lưu là RECAPTCHA_V2_SECRET_KEY
-            # Tôi sẽ gán giá trị của V2 vào biến V3 để server chạy được mà không lỗi thiếu biến
+            
             echo "RECAPTCHA_V2_SECRET_KEY=${{ secrets.RECAPTCHA_V2_SECRET_KEY }}" >> .env
             
             # Login Docker Hub
