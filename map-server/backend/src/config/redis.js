@@ -1,4 +1,3 @@
-// D:\Code\SE2025-17.3\map-server\backend\src\config\redis.js
 import Redis from 'ioredis';
 import dotenv from 'dotenv';
 
@@ -7,25 +6,23 @@ dotenv.config();
 // ƯU TIÊN:
 // 1. REDIS_URL  (vd: redis://redis:6379 trong Docker)
 // 2. REDIS_HOST + REDIS_PORT
-// 3. Mặc định: redis://127.0.0.1:6379 (chạy local = terminal)
+// 3. Mặc định: redis://127.0.0.1:6379 (chạy local)
 const REDIS_HOST = process.env.REDIS_HOST || '127.0.0.1';
 const REDIS_PORT = process.env.REDIS_PORT || 6379;
 const REDIS_URL = process.env.REDIS_URL || `redis://${REDIS_HOST}:${REDIS_PORT}`;
 
-// Create separate clients for different purposes
-// Publisher and subscriber should use different connections
+// Clients riêng biệt cho các mục đích khác nhau
 let publisherClient = null;
 let subscriberClient = null;
-let generalClient = null;
 
 /**
  * Internal helper: tạo client Redis với cấu hình chung
  */
 const createRedisClient = (label) => {
   const client = new Redis(REDIS_URL, {
-    // family: 4, // Use IPv4
+    // family: 4, // Force IPv4 nếu cần
     enableReadyCheck: true,
-    maxRetriesPerRequest: 3,
+    maxRetriesPerRequest: null, // Quan trọng cho stream consumer
     retryStrategy(times) {
       const delay = Math.min(times * 50, 2000);
       return delay;
@@ -36,15 +33,18 @@ const createRedisClient = (label) => {
     },
   });
 
-  client.on('connect', () => console.log(`🔗 Redis ${label} connected (${REDIS_URL})`));
-  client.on('error', (err) => console.error(`❌ Redis ${label} error:`, err));
-  client.on('close', () => console.log(`🔌 Redis ${label} disconnected`));
-
+  client.on('connect', () => console.log(`🔗 Redis ${label} connected`));
+  client.on('error', (err) => console.error(`❌ Redis ${label} connection error:`, err.message));
+  
   return client;
 };
 
+// --- QUAN TRỌNG: EXPORT BIẾN 'redis' ĐỂ CONTROLLER DÙNG ---
+// Khởi tạo Client chung (General) ngay lập tức để tránh lỗi import undefined
+export const redis = createRedisClient('General');
+
 /**
- * Get Redis client for publishing to streams
+ * Get Redis client for publishing to streams (Lazy load)
  */
 export const getPublisher = () => {
   if (!publisherClient) {
@@ -54,7 +54,7 @@ export const getPublisher = () => {
 };
 
 /**
- * Get Redis client for consuming streams
+ * Get Redis client for consuming streams (Lazy load)
  */
 export const getSubscriber = () => {
   if (!subscriberClient) {
@@ -64,41 +64,23 @@ export const getSubscriber = () => {
 };
 
 /**
- * Get general-purpose Redis client (for caching, etc.)
- */
-export const getRedisClient = () => {
-  if (!generalClient) {
-    generalClient = createRedisClient('General Client');
-  }
-  return generalClient;
-};
-
-/**
  * Gracefully close all Redis connections
  */
 export const closeAllRedisConnections = async () => {
   console.log('🔌 Closing all Redis connections...');
   const promises = [];
 
+  // Đóng client chung
+  promises.push(redis.quit().catch((err) => console.error('Error closing general client:', err)));
+
   if (publisherClient) {
     promises.push(
-      publisherClient
-        .quit()
-        .catch((err) => console.error('Error closing publisher:', err))
+      publisherClient.quit().catch((err) => console.error('Error closing publisher:', err))
     );
   }
   if (subscriberClient) {
     promises.push(
-      subscriberClient
-        .quit()
-        .catch((err) => console.error('Error closing subscriber:', err))
-    );
-  }
-  if (generalClient) {
-    promises.push(
-      generalClient
-        .quit()
-        .catch((err) => console.error('Error closing general client:', err))
+      subscriberClient.quit().catch((err) => console.error('Error closing subscriber:', err))
     );
   }
 
