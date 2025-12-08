@@ -17,39 +17,36 @@ export const getChunk = async (req, res) => {
       return res.status(400).json({ error: "Invalid coordinates" });
     }
 
-    // 🔥 QUAN TRỌNG: Cấm trình duyệt cache kết quả này (FIX LỖI F5 MẤT MÀU)
+    // 🔥 QUAN TRỌNG: Cấm trình duyệt cache kết quả này
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
 
     // Key cache trong Redis
-    //const cacheKey = `chunk:${chunkX}:${chunkY}`;
+    const cacheKey = `chunk:${chunkX}:${chunkY}`;
 
     // A. Thử lấy từ Redis
-    //const cachedData = await redis.get(cacheKey);
-    //if (cachedData) {
-    //  return res.json(JSON.parse(cachedData));
-    //}
+    const cachedData = await redis.get(cacheKey);
+    if (cachedData) {
+      return res.json(JSON.parse(cachedData));
+    }
 
     // B. Nếu không có, lấy từ MongoDB
-    console.log(`🔍 Direct DB Query for Chunk [${chunkX}, ${chunkY}]`);
-
     const gx_min = chunkX * CHUNK_SIZE;
     const gx_max = (chunkX + 1) * CHUNK_SIZE;
     const gy_min = chunkY * CHUNK_SIZE;
     const gy_max = (chunkY + 1) * CHUNK_SIZE;
 
-    // --- SỬA: QUAN TRỌNG - THÊM .collation ĐỂ DEBUG (Option) ---
+    // Tìm kiếm với điều kiện tọa độ là SỐ
     const pixels = await Pixel.find({
       gx: { $gte: gx_min, $lt: gx_max },
       gy: { $gte: gy_min, $lt: gy_max },
     }).select('gx gy color userId -_id').lean();
 
-    console.log(`✅ Found ${pixels.length} pixels in DB`);
-
-    // Lưu cache lại thì ok (để lần sau bật lại dùng)
-    if (pixels.length > 0) {
-        await redis.set(cacheKey, JSON.stringify(pixels), 'EX', 3600);
-    }
+    // C. Lưu vào Redis
+    // Cache kể cả mảng rỗng (thời gian ngắn 5p) để tránh query DB liên tục
+    const ttl = pixels.length > 0 ? 3600 : 300; 
+    await redis.set(cacheKey, JSON.stringify(pixels), 'EX', ttl);
 
     res.json(pixels);
   } catch (err) {
@@ -58,18 +55,19 @@ export const getChunk = async (req, res) => {
   }
 };
 
-// --- 2. ĐẶT PIXEL (CÓ XÓA CACHE) ---
+// --- 2. ĐẶT PIXEL (CÓ XÓA CACHE & TỰ SỬA DỮ LIỆU) ---
 export const addPixel = async (req, res, io) => {
-  const { gx, gy, color } = req.body;
-  const gxNum = Number(req.body.gx);
-  const gyNum = Number(req.body.gy);
+  // 🔥 FIX 1: Ép kiểu Số ngay lập tức (Chống lỗi String/Number)
+  const gx = Number(req.body.gx);
+  const gy = Number(req.body.gy);
+  const { color } = req.body;
 
-  if (typeof gx !== 'number' || typeof gy !== 'number' || !color) {
-    return res.status(400).json({ error: "Thiếu thông tin." });
+  // Validate kỹ
+  if (isNaN(gx) || isNaN(gy) || !color) {
+    return res.status(400).json({ error: "Tọa độ hoặc màu không hợp lệ." });
   }
 
   const isClear = color === 'transparent';
-  // Validate màu ở đây là đủ
   if (!isClear && !/^#[0-9a-fA-F]{6}$/.test(color)) {
     return res.status(400).json({ error: "Mã màu không hợp lệ." });
   }
@@ -91,27 +89,29 @@ export const addPixel = async (req, res, io) => {
 
     // Lưu Pixel vào DB
     if (isClear) {
-        await Pixel.findOneAndDelete({ gx: gxNum, gy: gyNum });
-        updatedPixel = { gx: gxNum, gy: gyNum, color: 'transparent', userId: null };
+      await Pixel.findOneAndDelete({ gx, gy });
     } else {
-        updatedPixel = await Pixel.findOneAndUpdate(
-            { gx: gxNum, gy: gyNum },
-            { 
-                color, 
-                userId,
-                gx: gxNum, 
-                gy: gyNum
-            }, 
-            { new: true, upsert: true, select: 'gx gy color userId' }
-        );
+      await Pixel.findOneAndUpdate(
+          { gx, gy }, // Điều kiện tìm kiếm
+          { 
+            color, 
+            userId,
+            // 🔥 FIX 2: ÉP GHI ĐÈ TỌA ĐỘ THÀNH SỐ
+            // Nếu DB cũ đang lưu dạng String, dòng này sẽ sửa nó thành Number
+            gx: gx, 
+            gy: gy
+          },
+          { new: true, upsert: true } 
+      );
     }
 
-    // 🔥 QUAN TRỌNG: XÓA CACHE REDIS CỦA CHUNK CHỨA PIXEL NÀY
+    // 🔥 QUAN TRỌNG: XÓA CACHE REDIS
     const chunkX = Math.floor(gx / CHUNK_SIZE);
     const chunkY = Math.floor(gy / CHUNK_SIZE);
     const cacheKey = `chunk:${chunkX}:${chunkY}`;
 
-    await redis.del(cacheKey); // Xóa cache cũ để lần sau getChunk load cái mới từ DB
+    await redis.del(cacheKey);
+    console.log(`🎨 Pixel [${gx},${gy}] updated. Cache cleared: ${cacheKey}`);
 
     // Lưu lịch sử
     try {
@@ -135,8 +135,14 @@ export const addPixel = async (req, res, io) => {
 export const getPixelDetail = async (req, res) => {
   try {
     const { gx, gy } = req.query;
+    
+    // Validate đầu vào detail
+    if (gx === undefined || gy === undefined) return res.status(400).json({});
+
     res.setHeader('Cache-Control', 'no-store, no-cache'); // Không cache
-    const pixel = await Pixel.findOne({ gx, gy }).populate({
+
+    // Ép kiểu số khi query
+    const pixel = await Pixel.findOne({ gx: Number(gx), gy: Number(gy) }).populate({
       path: 'userId', select: 'username displayName avatarUrl teamId',
       populate: { path: 'teamId', select: 'name' }
     });
