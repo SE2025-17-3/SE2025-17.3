@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  # Database Redis
+  redis:
+    image: redis:alpine
+    container_name: map_redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+
+  # Backend - Kéo từ Docker Hub
+  backend:
+    # Thay 'your_dockerhub_user' bằng username thật của bạn trong file này hoặc để biến môi trường xử lý
+    image: august0508/map-backend:latest
+    container_name: map_backend
+    restart: always
+    depends_on:
+      - redis
+    environment:
+      - PORT=4000
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - FRONTEND_URL=http://136.112.99.88
+      # Các biến mật sẽ được inject từ file .env trên server
+      - MONGO_URI=${MONGO_URI}
+      - DATABASE_URL=${DATABASE_URL}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - RECAPTCHA_V2_SECRET_KEY=${RECAPTCHA_V2_SECRET_KEY}
+    networks:
+      - app-network
+
+  # Frontend - Kéo từ Docker Hub
+  frontend:
+    image: august0508/map-frontend:latest
+    container_name: map_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+volumes:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge

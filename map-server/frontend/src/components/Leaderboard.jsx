@@ -1,4 +1,4 @@
-// frontend/src/components/Leaderboard.jsx
+// D:\Code\SE2025-17.3\map-server\frontend\src\components\Leaderboard.jsx
 import React, { useState, useEffect } from 'react';
 import { getLeaderboard } from '../services/leaderboardApi';
 
@@ -122,7 +122,7 @@ const Leaderboard = ({ isOpen, onClose }) => {
                   ) : (
                     players.map((player, index) => (
                       <div
-                        key={player._id}
+                        key={player._id || player.username || index}
                         className={`flex items-center justify-between p-4 rounded-lg transition-all ${
                           index === 0
                             ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 border-2 border-yellow-400'
@@ -173,7 +173,7 @@ const Leaderboard = ({ isOpen, onClose }) => {
                   ) : (
                     teams.map((team, index) => (
                       <div
-                        key={team._id}
+                        key={team._id || team.teamName || index}
                         className={`flex items-center justify-between p-4 rounded-lg transition-all ${
                           index === 0
                             ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 border-2 border-yellow-400'

@@ -1,9 +1,16 @@
+// D:\Code\SE2025-17.3\map-server\backend\src\config\redis.js
 import Redis from 'ioredis';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+// ƯU TIÊN:
+// 1. REDIS_URL  (vd: redis://redis:6379 trong Docker)
+// 2. REDIS_HOST + REDIS_PORT
+// 3. Mặc định: redis://127.0.0.1:6379 (chạy local = terminal)
+const REDIS_HOST = process.env.REDIS_HOST || '127.0.0.1';
+const REDIS_PORT = process.env.REDIS_PORT || 6379;
+const REDIS_URL = process.env.REDIS_URL || `redis://${REDIS_HOST}:${REDIS_PORT}`;
 
 // Create separate clients for different purposes
 // Publisher and subscriber should use different connections
@@ -12,26 +19,36 @@ let subscriberClient = null;
 let generalClient = null;
 
 /**
+ * Internal helper: tạo client Redis với cấu hình chung
+ */
+const createRedisClient = (label) => {
+  const client = new Redis(REDIS_URL, {
+    // family: 4, // Use IPv4
+    enableReadyCheck: true,
+    maxRetriesPerRequest: 3,
+    retryStrategy(times) {
+      const delay = Math.min(times * 50, 2000);
+      return delay;
+    },
+    reconnectOnError(err) {
+      console.error(`❌ Redis ${label} error:`, err.message);
+      return true; // Reconnect on all errors
+    },
+  });
+
+  client.on('connect', () => console.log(`🔗 Redis ${label} connected (${REDIS_URL})`));
+  client.on('error', (err) => console.error(`❌ Redis ${label} error:`, err));
+  client.on('close', () => console.log(`🔌 Redis ${label} disconnected`));
+
+  return client;
+};
+
+/**
  * Get Redis client for publishing to streams
  */
 export const getPublisher = () => {
   if (!publisherClient) {
-    publisherClient = new Redis(REDIS_URL, {
-      enableReadyCheck: true,
-      maxRetriesPerRequest: 3,
-      retryStrategy(times) {
-        const delay = Math.min(times * 50, 2000);
-        return delay;
-      },
-      reconnectOnError(err) {
-        console.error('❌ Redis Publisher error:', err.message);
-        return true; // Reconnect on all errors
-      }
-    });
-
-    publisherClient.on('connect', () => console.log('🔗 Redis Publisher connected'));
-    publisherClient.on('error', (err) => console.error('❌ Redis Publisher error:', err));
-    publisherClient.on('close', () => console.log('🔌 Redis Publisher disconnected'));
+    publisherClient = createRedisClient('Publisher');
   }
   return publisherClient;
 };
@@ -41,22 +58,7 @@ export const getPublisher = () => {
  */
 export const getSubscriber = () => {
   if (!subscriberClient) {
-    subscriberClient = new Redis(REDIS_URL, {
-      enableReadyCheck: true,
-      maxRetriesPerRequest: 3,
-      retryStrategy(times) {
-        const delay = Math.min(times * 50, 2000);
-        return delay;
-      },
-      reconnectOnError(err) {
-        console.error('❌ Redis Subscriber error:', err.message);
-        return true;
-      }
-    });
-
-    subscriberClient.on('connect', () => console.log('🔗 Redis Subscriber connected'));
-    subscriberClient.on('error', (err) => console.error('❌ Redis Subscriber error:', err));
-    subscriberClient.on('close', () => console.log('🔌 Redis Subscriber disconnected'));
+    subscriberClient = createRedisClient('Subscriber');
   }
   return subscriberClient;
 };
@@ -66,22 +68,7 @@ export const getSubscriber = () => {
  */
 export const getRedisClient = () => {
   if (!generalClient) {
-    generalClient = new Redis(REDIS_URL, {
-      enableReadyCheck: true,
-      maxRetriesPerRequest: 3,
-      retryStrategy(times) {
-        const delay = Math.min(times * 50, 2000);
-        return delay;
-      },
-      reconnectOnError(err) {
-        console.error('❌ Redis General Client error:', err.message);
-        return true;
-      }
-    });
-
-    generalClient.on('connect', () => console.log('🔗 Redis General Client connected'));
-    generalClient.on('error', (err) => console.error('❌ Redis General Client error:', err));
-    generalClient.on('close', () => console.log('🔌 Redis General Client disconnected'));
+    generalClient = createRedisClient('General Client');
   }
   return generalClient;
 };
@@ -92,17 +79,29 @@ export const getRedisClient = () => {
 export const closeAllRedisConnections = async () => {
   console.log('🔌 Closing all Redis connections...');
   const promises = [];
-  
+
   if (publisherClient) {
-    promises.push(publisherClient.quit().catch(err => console.error('Error closing publisher:', err)));
+    promises.push(
+      publisherClient
+        .quit()
+        .catch((err) => console.error('Error closing publisher:', err))
+    );
   }
   if (subscriberClient) {
-    promises.push(subscriberClient.quit().catch(err => console.error('Error closing subscriber:', err)));
+    promises.push(
+      subscriberClient
+        .quit()
+        .catch((err) => console.error('Error closing subscriber:', err))
+    );
   }
   if (generalClient) {
-    promises.push(generalClient.quit().catch(err => console.error('Error closing general client:', err)));
+    promises.push(
+      generalClient
+        .quit()
+        .catch((err) => console.error('Error closing general client:', err))
+    );
   }
-  
+
   await Promise.all(promises);
   console.log('✅ All Redis connections closed');
 };

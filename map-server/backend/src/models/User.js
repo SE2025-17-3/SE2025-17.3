@@ -1,4 +1,3 @@
-// backend/src/models/User.js
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
@@ -38,6 +37,19 @@ const userSchema = new mongoose.Schema({
     ref: 'Team',
     default: null,
   },
+  // --- NĂNG LƯỢNG ---
+  energy: { 
+    type: Number, 
+    default: 64 
+  },
+  maxEnergy: { 
+    type: Number, 
+    default: 64 // Sau này tăng lên khi lên Level
+  }, 
+  lastEnergyUpdate: { 
+    type: Date, 
+    default: Date.now 
+  }
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {

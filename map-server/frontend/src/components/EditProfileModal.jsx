@@ -1,5 +1,5 @@
-// frontend/src/components/EditProfileModal.jsx
-import React, { useState } from 'react';
+// D:\Code\SE2025-17.3\map-server\frontend\src\components\EditProfileModal.jsx
+import React, { useState } from 'react'; // Sửa lỗi: Thêm useState
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import './EditProfileModal.css';
@@ -13,7 +13,7 @@ const EditProfileModal = ({ closeModal }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
     const handleAvatarChange = (e) => {
         const file = e.target.files[0];
@@ -35,12 +35,10 @@ const EditProfileModal = ({ closeModal }) => {
         }
 
         try {
-            // Lệnh gọi API này đã đúng vì nó sử dụng instance 'api'
-            // đã được cấu hình với baseURL tương đối ('/api')
             const { data } = await api.patch('/users/profile', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
-            updateUserContext(data);
+            updateUserContext(data); // Cập nhật state toàn cục
             closeModal();
         } catch (err) {
             setError(err.response?.data?.message || 'Cập nhật thất bại.');
@@ -56,9 +54,7 @@ const EditProfileModal = ({ closeModal }) => {
                 <form onSubmit={handleSubmit}>
                     <div className="avatar-upload">
                         <label htmlFor="avatar-input">
-                            {/* user.avatarUrl đã là một đường dẫn tương đối (ví dụ: '/avatars/...'),
-                                trình duyệt sẽ tự động nối nó vào domain hiện tại. */}
-                            <img src={preview || user.avatarUrl} alt="Avatar Preview" className="avatar-preview" />
+                            <img src={preview || `${API_URL}${user.avatarUrl}`} alt="Avatar Preview" className="avatar-preview" />
                         </label>
                         <input id="avatar-input" type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
                     </div>

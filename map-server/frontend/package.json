@@ -12,6 +12,7 @@
   "dependencies": {
     "@hcaptcha/react-hcaptcha": "^1.14.0",
     "axios": "^1.13.1",
+    "html2canvas": "^1.4.1",
     "leaflet": "^1.9.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

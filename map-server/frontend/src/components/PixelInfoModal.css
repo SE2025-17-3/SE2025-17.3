@@ -1,0 +1,89 @@
+/* D:\Code\SE2025-17.3\map-server\frontend\src\components\PixelInfoModal.css */
+.pixel-info-modal {
+  position: absolute;
+  bottom: 20px; /* Đặt cao hơn nút Paint FAB một chút */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1150; /* Đảm bảo nằm trên PaintControls và AuxiliaryButtons */
+  background: #fff;
+  border-radius: 16px; 
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15); 
+  padding: 18px 24px; 
+  min-width: 320px; /* Tăng chiều rộng tối thiểu */
+  max-width: 90vw;
+}
+
+.pixel-info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 6px;
+}
+
+.pixel-coords {
+    font-size: 1.125rem; /* text-lg */
+}
+
+.pixel-status {
+  font-size: 16px; 
+  margin-bottom: 12px; 
+  font-weight: 500;
+}
+
+.pixel-actions {
+  display: flex;
+  gap: 10px; 
+  justify-content: flex-start;
+}
+
+.pill-button {
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 8px 14px; /* Điều chỉnh padding */
+  background: #f9fafb;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.15s;
+}
+.pill-button:hover {
+    background: #e5e7eb;
+}
+
+.pill-button.primary {
+  background: #1d4ed8; /* Màu xanh dương đậm */
+  color: #fff;
+  border-color: #1d4ed8;
+}
+.pill-button.primary:hover {
+    background: #2563eb;
+    border-color: #2563eb;
+}
+
+.pill-button.active {
+  background: #facc15; /* Màu vàng */
+  border-color: #facc15;
+  color: #1f2937;
+}
+.pill-button.active:hover {
+    background: #fbbf24;
+    border-color: #fbbf24;
+}
+
+.close-btn {
+  border: none;
+  background: none; 
+  width: 24px; 
+  height: 24px;
+  border-radius: 50%;
+  font-size: 18px;
+  color: #9ca3af;
+  cursor: pointer;
+}
+.close-btn:hover {
+    color: #4b5563;
+}

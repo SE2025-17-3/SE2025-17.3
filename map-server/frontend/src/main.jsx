@@ -1,4 +1,4 @@
-// frontend/src/main.jsx
+// D:\Code\SE2025-17.3\map-server\frontend\src\main.jsx
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
@@ -12,11 +12,11 @@ import { TeamProvider } from './context/TeamContext.jsx';
 //import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3'; // <-- 1. Import reCAPTCHA Provider
 import { VerificationProvider } from './context/VerificationContext.jsx'; // <-- 2. Import Verification Provider
 
-console.log("VITE_RECAPTCHA_V2_SITE_KEY:", import.meta.env.VITE_RECAPTCHA_V2_SITE_KEY);
+console.log("VITE_RECAPTCHA_V3_SITE_KEY:", import.meta.env.VITE_RECAPTCHA_V3_SITE_KEY);
 
 
 // Lấy Site Key từ biến môi trường của Vite
-const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_V2_SITE_KEY;
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_V3_SITE_KEY;
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>

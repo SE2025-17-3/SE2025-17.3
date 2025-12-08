@@ -1,3 +1,4 @@
+// D:\Code\SE2025-17.3\map-server\backend\src\models\PixelEvent.js
 import mongoose from 'mongoose';
 
 const pixelEventSchema = new mongoose.Schema({

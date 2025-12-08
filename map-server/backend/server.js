@@ -1,4 +1,4 @@
-// backend/server.js
+// D:\Code\SE2025-17.3\map-server\backend\server.js
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
@@ -13,10 +13,6 @@ import { closeAllRedisConnections } from './src/config/redis.js';
 // --- Cấu hình ban đầu ---
 dotenv.config();
 connectDB();
-
-if (process.env.NODE_ENV === 'production') {
-  app.set('trust proxy', 1);
-}
 
 const server = createServer(app);
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -43,10 +39,7 @@ const sessionConfig = {
   }),
   cookie: {
     httpOnly: true,
-    // === ĐÂY LÀ THAY ĐỔI DUY NHẤT ===
-    // Tạm thời đặt là 'false' để cookie có thể hoạt động trên kết nối HTTP.
-    // CẢNH BÁO: Khi bạn chuyển sang HTTPS cho trang web, bạn PHẢI đổi lại thành 'true'.
-    secure: false, 
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: 1000 * 60 * 60 * 24 // 1 ngày
   },
@@ -154,3 +147,4 @@ server.listen(PORT, () => {
   console.log(`📡 Frontend URL: ${FRONTEND_URL}`);
   console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
+
