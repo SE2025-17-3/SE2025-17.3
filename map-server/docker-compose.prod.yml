@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # 1. Redis (Cache & Queue)
+  redis:
+    image: redis:alpine
+    container_name: map_redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+
+  # 2. Backend (Node.js)
+  backend:
+    # Kéo image từ Docker Hub (biến DOCKER_USERNAME lấy từ file .env do GitHub Actions tạo)
+    image: august0508/map-backend:latest
+    container_name: map_backend
+    restart: always
+    depends_on:
+      - redis
+    # Cấu hình biến môi trường
+    environment:
+      - PORT=4000
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # IP Server của bạn (để CORS hoạt động đúng)
+      - FRONTEND_URL=http://136.112.99.88
+      # Các biến bí mật (inject từ file .env trên server)
+      - MONGO_URI=${MONGO_URI}
+      - DATABASE_URL=${DATABASE_URL}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - RECAPTCHA_V2_SECRET_KEY=${RECAPTCHA_V2_SECRET_KEY}
+    networks:
+      - app-network
+
+  # 3. Frontend (Nginx)
+  frontend:
+    image: august0508/map-frontend:latest
+    container_name: map_frontend
+    restart: always
+    ports:
+      - "80:80" # Chạy ở port 80 mặc định
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+# Khai báo volume để dữ liệu Redis không bị mất khi restart container
+volumes:
+  redis_data:
+
+# Khai báo mạng nội bộ
+networks:
+  app-network:
+    driver: bridge
