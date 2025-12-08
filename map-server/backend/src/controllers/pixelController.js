@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
 import Pixel from '../models/Pixel.js';
+import Outbox from '../models/Outbox.js';
 import PixelEvent from '../models/PixelEvent.js';
 import User from '../models/User.js';
-import Outbox from '../models/Outbox.js';
 
 const CHUNK_SIZE = 256;
 
@@ -34,9 +34,11 @@ export const getChunk = async (req, res) => {
 };
 
 /**
- * Add pixel with userId and teamId tracking
+ * Add pixel using Outbox Pattern with MongoDB Transaction
+ * Guarantees atomicity: Pixel + PixelEvent + Outbox all succeed or all fail
+ * Socket.IO broadcasting is handled by StreamConsumer worker (not here)
  */
-export const addPixel = async (req, res, io) => {
+export const addPixel = async (req, res) => {
   const { gx, gy, color } = req.body;
 
   // Input Validation
@@ -47,22 +49,23 @@ export const addPixel = async (req, res, io) => {
     return res.status(400).json({ error: "Mã màu không hợp lệ (cần dạng #rrggbb)." });
   }
 
-  // Lấy userId từ session (nếu có)
-  const userId = req.session?.userId || null;
-  let teamId = null;
-  if (userId) {
-    const user = await User.findById(userId).select('teamId');
-    teamId = user?.teamId || null;
-  }
-
-  // Start MongoDB session for transaction (Pixel + Outbox)
+  // Start MongoDB session for transaction
   const session = await mongoose.startSession();
 
   try {
-    // Execute transaction: update Pixel + write Outbox event atomically
-    const updatedPixel = await session.withTransaction(async () => {
-      // 1. Save/Update pixel in database (also tracking userId)
-      const pixelDoc = await Pixel.findOneAndUpdate(
+    // Execute atomic transaction: Pixel + PixelEvent + Outbox
+    const result = await session.withTransaction(async () => {
+      // Fetch userId and teamId inside transaction (avoid race conditions)
+      const userId = req.session?.userId || null;
+      let teamId = null;
+
+      if (userId) {
+        const user = await User.findById(userId).select('teamId').session(session);
+        teamId = user?.teamId || null;
+      }
+
+      // 1. Save/Update pixel in database
+      const updatedPixel = await Pixel.findOneAndUpdate(
         { gx, gy },
         { color, userId },
         {
@@ -73,69 +76,53 @@ export const addPixel = async (req, res, io) => {
         }
       );
 
-      // 2. Save event to outbox (same transaction)
+      // 2. Save PixelEvent for leaderboard (same transaction)
+      await PixelEvent.create(
+        [{ gx, gy, color, userId, teamId }],
+        { session }
+      );
+
+      // 3. Save event to Outbox for reliable broadcasting (same transaction)
       await Outbox.create(
         [
           {
             eventType: 'pixel_placed',
             payload: {
-              gx: pixelDoc.gx,
-              gy: pixelDoc.gy,
-              color: pixelDoc.color,
-              userId: pixelDoc.userId || null,
+              gx: updatedPixel.gx,
+              gy: updatedPixel.gy,
+              color: updatedPixel.color,
+              userId: updatedPixel.userId || null,
               teamId: teamId || null,
               timestamp: Date.now(),
             },
             published: false,
           },
         ],
-        { session } // Note: create with array when using session
+        { session }
       );
 
       console.log(
-        `✅ Pixel saved & event queued: (${pixelDoc.gx}, ${pixelDoc.gy}) ${pixelDoc.color} by user ${
-          pixelDoc.userId || 'anonymous'
-        }`
-      );
-
-      return pixelDoc;
-    });
-
-    // Ghi lại sự kiện vẽ pixel (ngoài transaction, best-effort)
-    try {
-      await PixelEvent.create({ gx, gy, color, userId, teamId });
-    } catch (evtErr) {
-      console.warn('⚠️ Không thể lưu PixelEvent:', evtErr?.message);
-    }
-
-    // --- ⭐ Quan trọng: Gửi sự kiện Socket.IO ---
-    if (io && updatedPixel) {
-      io.emit('pixel_placed', {
-        gx: updatedPixel.gx,
-        gy: updatedPixel.gy,
-        color: updatedPixel.color,
-        userId: updatedPixel.userId, // Gửi thông tin user để client có thể hiển thị
-      });
-      console.log(
-        `📡 Emitted pixel_placed: (${updatedPixel.gx}, ${updatedPixel.gy}) ${updatedPixel.color} by user ${
+        `✅ Transaction committed: Pixel (${updatedPixel.gx}, ${updatedPixel.gy}) saved with color ${updatedPixel.color} by user ${
           updatedPixel.userId || 'anonymous'
         }`
       );
-    } else if (!io) {
-      console.warn("⚠️ Không tìm thấy instance 'io' để emit sự kiện pixel_placed.");
-    }
-    // ------------------------------------------
+
+      return {
+        pixel: updatedPixel,
+        teamId,
+      };
+    });
 
     // Transaction successful - respond to client
     res.status(201).json({
-      gx: updatedPixel.gx,
-      gy: updatedPixel.gy,
-      color: updatedPixel.color,
-      userId: updatedPixel.userId,
-      teamId,
+      gx: result.pixel.gx,
+      gy: result.pixel.gy,
+      color: result.pixel.color,
+      userId: result.pixel.userId,
+      teamId: result.teamId,
     });
   } catch (err) {
-    console.error("❌ Lỗi khi đặt pixel:", err);
+    console.error("❌ Transaction failed:", err);
 
     if (err.name === 'ValidationError') {
       return res.status(400).json({ error: err.message });
@@ -143,6 +130,7 @@ export const addPixel = async (req, res, io) => {
 
     res.status(500).json({ error: "Không thể đặt pixel trên server." });
   } finally {
+    // Always end the session
     await session.endSession();
   }
 };
