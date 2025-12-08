@@ -1,4 +1,4 @@
-// frontend/src/components/EditProfileModal.jsx
+// D:\Code\SE2025-17.3\map-server\frontend\src\components\EditProfileModal.jsx
 import React, { useState } from 'react'; // Sửa lỗi: Thêm useState
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';

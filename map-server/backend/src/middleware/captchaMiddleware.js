@@ -1,4 +1,4 @@
-// backend/src/middleware/captchaMiddleware.js
+// D:\Code\SE2025-17.3\map-server\backend\src\middleware\captchaMiddleware.js
 import axios from 'axios';
 
 // Đổi tên hàm cho đúng hơn (tùy chọn) và bỏ kiểm tra score

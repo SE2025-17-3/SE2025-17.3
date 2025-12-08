@@ -1,3 +1,5 @@
+// D:\Code\SE2025-17.3\map-server\frontend\src\context\SocketContext.jsx
+
 import React, { createContext, useContext, useEffect } from 'react';
 import io from 'socket.io-client';
 

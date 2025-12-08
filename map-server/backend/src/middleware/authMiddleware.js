@@ -1,3 +1,4 @@
+// D:\Code\SE2025-17.3\map-server\backend\src\middleware\authMiddleware.js
 import User from '../models/User.js';
 
 /**

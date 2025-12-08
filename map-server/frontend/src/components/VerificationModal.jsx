@@ -1,4 +1,4 @@
-// frontend/src/components/VerificationModal.jsx
+// D:\Code\SE2025-17.3\map-server\frontend\src\components\VerificationModal.jsx
 
 import React , { useState, useRef } from 'react';
 // 1. Import ReCAPTCHA của Google thay vì HCaptcha
