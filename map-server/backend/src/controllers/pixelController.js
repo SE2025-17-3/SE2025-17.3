@@ -22,29 +22,34 @@ export const getChunk = async (req, res) => {
     res.setHeader('Expires', '0');
 
     // Key cache trong Redis
-    const cacheKey = `chunk:${chunkX}:${chunkY}`;
+    //const cacheKey = `chunk:${chunkX}:${chunkY}`;
 
     // A. Thử lấy từ Redis
-    const cachedData = await redis.get(cacheKey);
-    if (cachedData) {
-      return res.json(JSON.parse(cachedData));
-    }
+    //const cachedData = await redis.get(cacheKey);
+    //if (cachedData) {
+    //  return res.json(JSON.parse(cachedData));
+    //}
 
     // B. Nếu không có, lấy từ MongoDB
+    console.log(`🔍 Direct DB Query for Chunk [${chunkX}, ${chunkY}]`);
+
     const gx_min = chunkX * CHUNK_SIZE;
     const gx_max = (chunkX + 1) * CHUNK_SIZE;
     const gy_min = chunkY * CHUNK_SIZE;
     const gy_max = (chunkY + 1) * CHUNK_SIZE;
 
+    // --- SỬA: QUAN TRỌNG - THÊM .collation ĐỂ DEBUG (Option) ---
     const pixels = await Pixel.find({
       gx: { $gte: gx_min, $lt: gx_max },
       gy: { $gte: gy_min, $lt: gy_max },
     }).select('gx gy color userId -_id').lean();
 
-    // C. Lưu vào Redis (Cache 1 tiếng)
-    // Nếu mảng rỗng cũng cache nhưng thời gian ngắn hơn (5 phút)
-    const ttl = pixels.length > 0 ? 3600 : 300;
-    await redis.set(cacheKey, JSON.stringify(pixels), 'EX', ttl);
+    console.log(`✅ Found ${pixels.length} pixels in DB`);
+
+    // Lưu cache lại thì ok (để lần sau bật lại dùng)
+    if (pixels.length > 0) {
+        await redis.set(cacheKey, JSON.stringify(pixels), 'EX', 3600);
+    }
 
     res.json(pixels);
   } catch (err) {
