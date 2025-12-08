@@ -2,7 +2,9 @@ import mongoose from 'mongoose';
 import Pixel from '../models/Pixel.js';
 import PixelEvent from '../models/PixelEvent.js';
 import User from '../models/User.js';
-import { calculateEnergy } from './authController.js'; // Import helper
+import { calculateEnergy } from './authController.js';
+// --- THÊM: Import Redis ---
+import { redis } from '../config/redis.js'; 
 
 const CHUNK_SIZE = 256;
 
@@ -15,6 +17,20 @@ export const getChunk = async (req, res) => {
       return res.status(400).json({ error: "Chunk coordinates phải là số." });
     }
 
+    // --- 1. CHỐNG BROWSER CACHE (Quan trọng để fix lỗi F5 mất hình) ---
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+
+    // --- 2. LOGIC REDIS CACHING ---
+    const cacheKey = `chunk:${chunkX}:${chunkY}`;
+
+    // Kiểm tra Redis trước
+    const cachedData = await redis.get(cacheKey);
+    if (cachedData) {
+        // Nếu có trong Redis, trả về ngay (Rất nhanh)
+        return res.json(JSON.parse(cachedData));
+    }
+
+    // Nếu không có, gọi MongoDB
     const gx_min = chunkX * CHUNK_SIZE;
     const gx_max = (chunkX + 1) * CHUNK_SIZE;
     const gy_min = chunkY * CHUNK_SIZE;
@@ -23,7 +39,11 @@ export const getChunk = async (req, res) => {
     const pixels = await Pixel.find({
       gx: { $gte: gx_min, $lt: gx_max },
       gy: { $gte: gy_min, $lt: gy_max },
-    }).select('gx gy color userId -_id');
+    }).select('gx gy color userId -_id'); // userId cần để hiện info, nếu không cần có thể bỏ
+
+    // Lưu vào Redis (Hết hạn sau 1 giờ nếu không có ai động vào)
+    // EX = expire seconds
+    await redis.set(cacheKey, JSON.stringify(pixels), 'EX', 3600);
 
     res.json(pixels);
   } catch (err) {
@@ -39,7 +59,6 @@ export const addPixel = async (req, res, io) => {
     return res.status(400).json({ error: "Thiếu thông tin gx, gy hoặc color." });
   }
 
-  // Cho phép màu 'transparent' để xóa
   const isClear = color === 'transparent';
   if (!isClear && !/^#[0-9a-fA-F]{6}$/.test(color)) {
     return res.status(400).json({ error: "Mã màu không hợp lệ." });
@@ -53,14 +72,15 @@ export const addPixel = async (req, res, io) => {
     
     // 1. Kiểm tra và Trừ năng lượng
     const user = await User.findById(userId);
-    await calculateEnergy(user); // Cập nhật năng lượng mới nhất
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    await calculateEnergy(user); 
 
     if (user.energy <= 0) {
         return res.status(403).json({ error: "Hết năng lượng." });
     }
 
     user.energy -= 1;
-    // Nếu trước đó đang đầy, giờ bắt đầu đếm giờ
     if (user.energy === (user.maxEnergy - 1)) {
         user.lastEnergyUpdate = new Date();
     }
@@ -71,11 +91,9 @@ export const addPixel = async (req, res, io) => {
     let teamId = user.teamId || null;
 
     if (isClear) {
-        // Xóa pixel: Xóa khỏi DB
         await Pixel.findOneAndDelete({ gx, gy });
         updatedPixel = { gx, gy, color: 'transparent', userId: null };
     } else {
-        // Vẽ pixel: Cập nhật DB
         updatedPixel = await Pixel.findOneAndUpdate(
             { gx, gy },
             { color, userId }, 
@@ -83,12 +101,22 @@ export const addPixel = async (req, res, io) => {
         );
     }
 
-    // 3. Lưu lịch sử (PixelEvent)
+    // --- 3. XÓA CACHE REDIS (BẮT BUỘC) ---
+    // Để lần sau getChunk lấy dữ liệu mới nhất từ MongoDB
+    const chunkX = Math.floor(gx / CHUNK_SIZE);
+    const chunkY = Math.floor(gy / CHUNK_SIZE);
+    const cacheKey = `chunk:${chunkX}:${chunkY}`;
+    
+    // Xóa key này đi
+    await redis.del(cacheKey);
+    // ------------------------------------
+
+    // 4. Lưu lịch sử
     try {
       await PixelEvent.create({ gx, gy, color, userId, teamId });
     } catch (evtErr) {}
 
-    // 4. Bắn Socket
+    // 5. Bắn Socket
     if (io) {
       io.emit('pixel_placed', { 
         gx, gy, 
@@ -97,7 +125,6 @@ export const addPixel = async (req, res, io) => {
       });
     }
 
-    // Trả về năng lượng còn lại cho frontend
     res.status(201).json({ 
       gx, gy, color, userId,
       userEnergy: user.energy
@@ -116,6 +143,9 @@ export const getPixelDetail = async (req, res) => {
     if (gx === undefined || gy === undefined) {
       return res.status(400).json({ error: "Thiếu tọa độ gx, gy" });
     }
+
+    // Thêm no-cache cho api detail luôn cho chắc
+    res.setHeader('Cache-Control', 'no-store, no-cache');
 
     const pixel = await Pixel.findOne({ gx: Number(gx), gy: Number(gy) })
       .populate({
