@@ -1,7 +1,14 @@
 # docker-compose.yml
-version: '3.8'
 
 services:
+  # Redis for pub/sub and caching
+  redis:
+    image: redis:7-alpine
+    container_name: map-app-redis
+    restart: unless-stopped
+    networks:
+      - map-app-network
+
   # Dịch vụ Backend
   backend:
     build:
@@ -21,21 +28,22 @@ services:
       - SESSION_NAME=${SESSION_NAME}
       - FRONTEND_URL=${FRONTEND_URL}
       - RECAPTCHA_V3_SECRET_KEY=${RECAPTCHA_V3_SECRET_KEY}
+    depends_on:
+      - redis
     env_file:
-      - .env # Chỉ định file .env
+      - .env
     networks:
       - map-app-network
 
   # Dịch vụ Frontend
   frontend:
     build:
-      context: ./frontend
+      context: ./map-server/frontend
     container_name: map-app-frontend
     restart: unless-stopped
     ports:
-      # Ánh xạ port 80 của container (Nginx) ra port 80 của server
-      # Giúp bạn truy cập web qua địa chỉ IP mà không cần gõ port
-      - "80:80"
+      # Ánh xạ port 3000 của host ra port 80 của container (Nginx)
+      - "3000:80"
     depends_on:
       - backend # Khởi động sau khi backend đã sẵn sàng (tùy chọn)
     networks:
