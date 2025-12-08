@@ -1,3 +1,4 @@
+// D:\Code\SE2025-17.3\map-server\backend\src\models\Pixel.js
 import mongoose from 'mongoose';
 
 const pixelSchema = new mongoose.Schema({

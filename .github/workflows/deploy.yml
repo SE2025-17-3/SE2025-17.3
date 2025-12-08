@@ -1,81 +1,93 @@
-# .github/workflows/deploy.yml
-
-name: Build, Push, and Deploy on Main or Develop
+name: Professional CI/CD Pipeline
 
 on:
   push:
-    branches:
-      - main
-      - develop
+    branches: [ "main" ]
 
 jobs:
-  build_and_push:
-    # ... (phần này không thay đổi)
+  # JOB 1: BUILD VÀ ĐẨY IMAGE LÊN DOCKER HUB
+  build-and-push:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Determine Image Tag
-        id: get_tag
-        run: |
-          branch_name=${{ github.ref_name }}
-          if [ "$branch_name" == "main" ]; then
-            echo "TAG=latest" >> $GITHUB_OUTPUT
-          else
-            echo "TAG=develop" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Log in to Docker Hub
+      - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push backend image
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # Build Backend
+      - name: Build and Push Backend
         uses: docker/build-push-action@v4
         with:
           context: ./map-server/backend
           push: true
-          tags: august0508/map-app-backend:${{ steps.get_tag.outputs.TAG }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/map-backend:latest
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/map-backend:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/map-backend:buildcache,mode=max
 
-      - name: Build and push frontend image
+      # Build Frontend (Quan trọng: Phải truyền biến môi trường vào lúc build)
+      - name: Build and Push Frontend
         uses: docker/build-push-action@v4
         with:
           context: ./map-server/frontend
           push: true
-          tags: august0508/map-app-frontend:${{ steps.get_tag.outputs.TAG }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/map-frontend:latest
           build-args: |
             VITE_RECAPTCHA_V2_SITE_KEY=${{ secrets.VITE_RECAPTCHA_V2_SITE_KEY }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/map-frontend:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/map-frontend:buildcache,mode=max
 
+  # JOB 2: DEPLOY LÊN SERVER (CHỈ CHẠY KHI JOB 1 THÀNH CÔNG)
   deploy:
+    needs: build-and-push
     runs-on: ubuntu-latest
-    needs: build_and_push
     steps:
-      - name: Deploy to Server via SSH
-        uses: appleboy/ssh-action@master
+      - name: Checkout code to get docker-compose.prod.yml
+        uses: actions/checkout@v3
+
+      - name: Copy docker-compose file to server
+        uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # Chỉ copy đúng file compose production
+          source: "map-server/docker-compose.prod.yml"
+          target: "/home/${{ secrets.SERVER_USER }}/deploy"
+
+      - name: SSH and Deploy
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/se2025_17_3/SE2025-17.3
-            git checkout develop
-            git pull origin develop
+            cd /home/${{ secrets.SERVER_USER }}/deploy/map-server
             
-            docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+            # Đổi tên file cho gọn
+            mv docker-compose.prod.yml docker-compose.yml
             
-            BRANCH_NAME=${{ github.ref_name }}
-            if [ "$BRANCH_NAME" == "main" ]; then
-              echo "🚀 Deploying PRODUCTION from 'main' branch..."
-              docker compose -f docker-compose.prod.yml pull
-              docker compose -f docker-compose.prod.yml up -d
-            else
-              echo "🚀 Deploying STAGING from 'develop' branch..."
-              docker compose -f docker-compose.develop.yml pull
-              docker compose -f docker-compose.develop.yml up -d
-            fi
+            # Tạo file .env chứa bí mật (Runtime Secrets)
+            echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" > .env
+            echo "MONGO_URI=${{ secrets.MONGO_URI }}" >> .env
+            echo "DATABASE_URL=${{ secrets.MONGO_URI }}" >> .env
+            echo "SESSION_SECRET=${{ secrets.SESSION_SECRET }}" >> .env
+            echo "RECAPTCHA_V2_SECRET_KEY=${{ secrets.RECAPTCHA_V2_SECRET_KEY }}" >> .env
             
-            echo "🧹 Cleaning up old images..."
+            # Login Docker trên Server (để pull image nếu để private, public thì không cần nhưng cứ login cho chắc)
+            echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+            
+            # Pull Image mới nhất về
+            docker compose pull
+            
+            # Up containers (Recreate if changed)
+            docker compose up -d
+            
+            # Dọn dẹp images cũ (Dangling images) để không đầy ổ cứng
             docker image prune -f
-            echo "🎉 Deployment for $BRANCH_NAME completed!"

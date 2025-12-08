@@ -1,6 +1,38 @@
-// backend/src/controllers/authController.js
 import User from '../models/User.js';
 import { validationResult } from 'express-validator';
+
+// --- HELPER: Tính toán năng lượng ---
+const RECHARGE_RATE_MS = 30 * 1000; // 30 giây hồi 1 điểm
+
+export const calculateEnergy = async (user) => {
+  const now = Date.now();
+  const lastUpdate = new Date(user.lastEnergyUpdate).getTime();
+  const max = user.maxEnergy || 64;
+
+  // Nếu năng lượng đã đầy hoặc hơn, chỉ cập nhật thời gian
+  if (user.energy >= max) {
+    if (user.energy > max) user.energy = max;
+    user.lastEnergyUpdate = now;
+    return;
+  }
+
+  const elapsed = now - lastUpdate;
+  const gained = Math.floor(elapsed / RECHARGE_RATE_MS);
+
+  if (gained > 0) {
+    const newEnergy = Math.min(max, user.energy + gained);
+    user.energy = newEnergy;
+    
+    // Giữ lại phần dư thời gian (VD: 45s trôi qua -> hồi 1 điểm, dư 15s cho lần sau)
+    if (newEnergy < max) {
+      user.lastEnergyUpdate = new Date(lastUpdate + (gained * RECHARGE_RATE_MS));
+    } else {
+      user.lastEnergyUpdate = new Date(now);
+    }
+    
+    await user.save();
+  }
+};
 
 export const registerUser = async (req, res) => {
   const errors = validationResult(req);
@@ -20,12 +52,11 @@ export const registerUser = async (req, res) => {
       return res.status(400).json({ message: 'Email hoặc Tên đăng nhập đã tồn tại' });
     }
 
-    // Sửa lỗi validation: Gán displayName ngay khi tạo user
     user = new User({
       username: username.toLowerCase(),
       email: email.toLowerCase(),
       password,
-      displayName: username // Gán giá trị ban đầu để vượt qua validation
+      displayName: username
     });
     await user.save();
 
@@ -45,9 +76,11 @@ export const loginUser = async (req, res) => {
       return res.status(401).json({ message: 'Tên đăng nhập hoặc mật khẩu không đúng' });
     }
 
+    // Tính toán năng lượng khi đăng nhập
+    await calculateEnergy(user);
+
     req.session.userId = user._id;
 
-    // Trả về đầy đủ thông tin cần thiết cho frontend
     const userInfo = {
       _id: user._id,
       username: user.username,
@@ -55,6 +88,9 @@ export const loginUser = async (req, res) => {
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
       teamId: user.teamId || null,
+      energy: user.energy,
+      maxEnergy: user.maxEnergy,
+      lastEnergyUpdate: user.lastEnergyUpdate
     };
 
     res.status(200).json({ message: 'Đăng nhập thành công', user: userInfo });

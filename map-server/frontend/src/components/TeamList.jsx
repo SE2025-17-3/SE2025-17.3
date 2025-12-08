@@ -1,4 +1,4 @@
-// frontend/src/components/TeamList.jsx
+// D:\Code\SE2025-17.3\map-server\frontend\src\components\TeamList.jsx
 import React, { useState, useEffect } from 'react';
 import { useTeam } from '../context/TeamContext';
 import { useAuth } from '../context/AuthContext';

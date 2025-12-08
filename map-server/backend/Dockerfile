@@ -1,27 +1,28 @@
-# map-server/backend/Dockerfile
-
-# Sử dụng image Node.js 18-alpine, nhẹ và hiệu quả
+# Sử dụng Node 18 Alpine
 FROM node:18-alpine
 
-# Thiết lập thư mục làm việc bên trong container
+# Cài đặt thư viện hệ thống cần thiết cho bcrypt và Prisma (OpenSSL)
+RUN apk add --no-cache openssl python3 make g++
+
 WORKDIR /app
 
-# Sao chép package.json và package-lock.json để tận dụng Docker cache
-# Chỉ khi các file này thay đổi, Docker mới chạy lại 'npm install'
+# Copy package.json để cài dependencies trước (tối ưu cache docker)
 COPY package*.json ./
 
-# Cài đặt tất cả dependencies (bao gồm cả devDependencies để chạy Prisma)
-RUN npm install
+# Cài đặt dependencies
+RUN npm ci --only=production
 
-# Sao chép toàn bộ source code của backend vào container
+# Copy toàn bộ code
 COPY . .
 
-# Chạy Prisma Generate để tạo client dựa trên schema của bạn
+
+ENV DATABASE_URL="mongodb+srv://admin:12345678aA@cluster0.w7yigwi.mongodb.net/pixel-canvas?retryWrites=true&w=majority&appName=Cluster0"
+
+# Generate Prisma Client (Bắt buộc vì schema.prisma thay đổi)
 RUN npx prisma generate
 
-# Mở port 4000, là port mà server của bạn đang lắng nghe
+# Mở port 4000 (khớp với server.js)
 EXPOSE 4000
 
-# Lệnh để khởi chạy ứng dụng khi container bắt đầu
-# Sử dụng script "start" từ package.json
+# Lệnh khởi động
 CMD ["npm", "start"]

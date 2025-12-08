@@ -1,3 +1,5 @@
+// D:\Code\SE2025-17.3\map-server\frontend\src\components\AuthForm.jsx
+
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 

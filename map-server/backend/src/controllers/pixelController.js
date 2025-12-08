@@ -2,10 +2,10 @@ import mongoose from 'mongoose';
 import Pixel from '../models/Pixel.js';
 import PixelEvent from '../models/PixelEvent.js';
 import User from '../models/User.js';
+import { calculateEnergy } from './authController.js'; // Import helper
 
 const CHUNK_SIZE = 256;
 
-// Giữ nguyên logic getChunk
 export const getChunk = async (req, res) => {
   try {
     const chunkX = parseInt(req.params.chunkX, 10);
@@ -27,77 +27,127 @@ export const getChunk = async (req, res) => {
 
     res.json(pixels);
   } catch (err) {
-    console.error("❌ Lỗi khi lấy chunk:", err); // Log lỗi ra console
+    console.error("❌ Lỗi khi lấy chunk:", err);
     res.status(500).json({ error: "Không thể lấy dữ liệu chunk" });
   }
 };
 
-/**
- * Add pixel with userId and teamId tracking
- */
 export const addPixel = async (req, res, io) => {
   const { gx, gy, color } = req.body;
 
-  // Input Validation
   if (typeof gx !== 'number' || typeof gy !== 'number' || !color) {
     return res.status(400).json({ error: "Thiếu thông tin gx, gy hoặc color." });
   }
-  if (!/^#[0-9a-fA-F]{6}$/.test(color)) {
-    return res.status(400).json({ error: "Mã màu không hợp lệ (cần dạng #rrggbb)." });
+
+  // Cho phép màu 'transparent' để xóa
+  const isClear = color === 'transparent';
+  if (!isClear && !/^#[0-9a-fA-F]{6}$/.test(color)) {
+    return res.status(400).json({ error: "Mã màu không hợp lệ." });
   }
 
   try {
-    // Lấy userId từ session (nếu có)
-    const userId = req.session?.userId || null;
-    let teamId = null;
-    
-    if (userId) {
-      const user = await User.findById(userId).select('teamId');
-      teamId = user?.teamId || null;
+    const userId = req.session?.userId;
+    if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
     }
     
-    // Trường 'updatedAt' sẽ tự động cập nhật nhờ pre-hook trong Model
-    const updatedPixel = await Pixel.findOneAndUpdate(
-      { gx, gy },
-      { color, userId }, // Cập nhật cả color và userId
-      { new: true, upsert: true, select: 'gx gy color userId' }
-    );
+    // 1. Kiểm tra và Trừ năng lượng
+    const user = await User.findById(userId);
+    await calculateEnergy(user); // Cập nhật năng lượng mới nhất
 
-    // Ghi lại sự kiện vẽ pixel
+    if (user.energy <= 0) {
+        return res.status(403).json({ error: "Hết năng lượng." });
+    }
+
+    user.energy -= 1;
+    // Nếu trước đó đang đầy, giờ bắt đầu đếm giờ
+    if (user.energy === (user.maxEnergy - 1)) {
+        user.lastEnergyUpdate = new Date();
+    }
+    await user.save();
+    
+    // 2. Logic Vẽ hoặc Xóa
+    let updatedPixel;
+    let teamId = user.teamId || null;
+
+    if (isClear) {
+        // Xóa pixel: Xóa khỏi DB
+        await Pixel.findOneAndDelete({ gx, gy });
+        updatedPixel = { gx, gy, color: 'transparent', userId: null };
+    } else {
+        // Vẽ pixel: Cập nhật DB
+        updatedPixel = await Pixel.findOneAndUpdate(
+            { gx, gy },
+            { color, userId }, 
+            { new: true, upsert: true, select: 'gx gy color userId' }
+        );
+    }
+
+    // 3. Lưu lịch sử (PixelEvent)
     try {
       await PixelEvent.create({ gx, gy, color, userId, teamId });
-    } catch (evtErr) {
-      console.warn('⚠️ Không thể lưu PixelEvent:', evtErr?.message);
-    }
+    } catch (evtErr) {}
 
-    // --- ⭐ Quan trọng: Gửi sự kiện Socket.IO ---
-    if (io && updatedPixel) { // Kiểm tra io tồn tại
+    // 4. Bắn Socket
+    if (io) {
       io.emit('pixel_placed', { 
-        gx: updatedPixel.gx, 
-        gy: updatedPixel.gy, 
-        color: updatedPixel.color,
-        userId: updatedPixel.userId // Gửi thông tin user để client có thể hiển thị
+        gx, gy, 
+        color: isClear ? 'transparent' : updatedPixel.color,
+        userId: isClear ? null : userId 
       });
-      console.log(`📡 Emitted pixel_placed: (${updatedPixel.gx}, ${updatedPixel.gy}) ${updatedPixel.color} by user ${updatedPixel.userId || 'anonymous'}`);
-    } else if (!io) {
-      console.warn("⚠️ Không tìm thấy instance 'io' để emit sự kiện pixel_placed.");
     }
-    // ------------------------------------------
 
+    // Trả về năng lượng còn lại cho frontend
     res.status(201).json({ 
-      gx: updatedPixel.gx, 
-      gy: updatedPixel.gy, 
-      color: updatedPixel.color,
-      userId: updatedPixel.userId
+      gx, gy, color, userId,
+      userEnergy: user.energy
     });
 
   } catch (err) {
     console.error("❌ Lỗi khi đặt pixel:", err);
-    
-    if (err.name === 'ValidationError') {
-      return res.status(400).json({ error: err.message });
-    }
-    
     res.status(500).json({ error: "Không thể đặt pixel trên server." });
+  }
+};
+
+export const getPixelDetail = async (req, res) => {
+  try {
+    const { gx, gy } = req.query;
+
+    if (gx === undefined || gy === undefined) {
+      return res.status(400).json({ error: "Thiếu tọa độ gx, gy" });
+    }
+
+    const pixel = await Pixel.findOne({ gx: Number(gx), gy: Number(gy) })
+      .populate({
+        path: 'userId',
+        select: 'username displayName avatarUrl teamId',
+        populate: { path: 'teamId', select: 'name' } 
+      });
+
+    if (!pixel) {
+      return res.json({
+        gx: Number(gx),
+        gy: Number(gy),
+        color: '#FFFFFF',
+        user: null,
+        teamName: null
+      });
+    }
+
+    const teamName = pixel.userId?.teamId?.name || null;
+
+    res.json({
+      gx: pixel.gx,
+      gy: pixel.gy,
+      color: pixel.color,
+      updatedAt: pixel.updatedAt,
+      user: pixel.userId ? pixel.userId.displayName || pixel.userId.username : null,
+      avatarUrl: pixel.userId ? pixel.userId.avatarUrl : null,
+      teamName: teamName
+    });
+
+  } catch (err) {
+    console.error("Lỗi lấy chi tiết pixel:", err);
+    res.status(500).json({ error: "Lỗi server" });
   }
 };

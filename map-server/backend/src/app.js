@@ -1,4 +1,5 @@
-// backend/src/app.js
+// D:\Code\SE2025-17.3\map-server\backend\src\app.js
+
 import express from 'express';
 import cors from 'cors';
 import path from 'path';

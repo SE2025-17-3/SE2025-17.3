@@ -1,87 +1,189 @@
-// frontend/src/components/PaintControls.jsx
+import React, { useState, useEffect, useCallback } from "react";
+import "./PaintControls.css";
+import { useAuth } from "../context/AuthContext.jsx";
+import api from "../services/api";
 
-import React, { useState } from 'react';
-import './PaintControls.css';
-import { useAuth } from '../context/AuthContext.jsx';
-import { useVerification } from '../context/VerificationContext.jsx'; // <-- BỔ SUNG: 1. Import hook xác minh
-import api from '../services/api';
+const CLEAR_COLOR = "transparent";
+const RECHARGE_RATE = 30; // 30 giây
 
-const PaintControls = ({ selectedColor, onColorSelect, selectedPixel, onPixelSelect, onLoginRequired }) => {
-    const [isPaletteVisible, setIsPaletteVisible] = useState(false);
-    const { isLoggedIn } = useAuth();
-    const { incrementPixelCount, isVerificationRequired } = useVerification(); // <-- BỔ SUNG: 2. Lấy hàm và state từ context
+const ALL_COLORS = [
+  "#000000", "#555555", "#888888", "#FFFFFF", "#FF0000", "#FF6B6B", "#FF9F1C", "#FFC857",
+  "#FFE66D", "#00B894", "#00CEC9", "#0984E3", "#8A2BE2", "#FF00FF", CLEAR_COLOR
+];
 
-    const colors = [
-        '#FFFFFF', '#C2C2C2', '#858585', '#474747', '#000000', '#2E5094', '#3E8AE6',
-        '#47D4E6', '#85E685', '#479447', '#3E8A3E', '#F7E63E', '#F7A63E', '#F76B3E',
-        '#E63E3E', '#942E2E', '#E68585', '#B54794', '#853E8A'
-    ];
+const PaintControls = ({
+  selectedPixelColor,
+  setSelectedPixelColor,
+  pendingPixels,
+  setPendingPixels,
+  onLoginRequired,
+  isPaletteVisible,
+  setIsPaletteVisible,
+  canPaint,
+  isPixelInfoModalOpen,
+}) => {
+  const { isLoggedIn, user, refreshUser } = useAuth();
 
-    const handleColorSelect = async (color) => {
-        onColorSelect(color);
+  const [energy, setEnergy] = useState(0);
+  const [maxEnergy, setMaxEnergy] = useState(64);
+  const [nextRecoverSeconds, setNextRecoverSeconds] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-        // <-- BỔ SUNG: 3. Chặn hành động nếu đang cần xác minh -->
-        if (isVerificationRequired) {
-            alert('Vui lòng hoàn thành xác minh "Tôi không phải là robot" để tiếp tục.');
-            return;
-        }
+  // Sync năng lượng từ Context
+  useEffect(() => {
+    if (user) {
+      setEnergy(user.energy || 0);
+      setMaxEnergy(user.maxEnergy || 64);
+    }
+  }, [user]);
 
-        if (!isLoggedIn) {
-            alert("Bạn cần đăng nhập để tô màu!");
-            onLoginRequired();
-            return;
-        }
+  // Đếm ngược thời gian hồi phục
+  useEffect(() => {
+    if (!user) return;
 
-        if (!selectedPixel) {
-            alert("Vui lòng chọn một pixel trên bản đồ trước khi tô màu.");
-            setIsPaletteVisible(false);
-            return;
-        }
+    const calculateTimer = () => {
+      if (energy >= maxEnergy) {
+        setNextRecoverSeconds(0);
+        return;
+      }
 
-        try {
-            await api.post('/pixels', {
-                gx: selectedPixel.gx,
-                gy: selectedPixel.gy,
-                color: color
-            });
+      const now = Date.now();
+      const lastUpdate = new Date(user.lastEnergyUpdate).getTime();
+      const elapsedSeconds = (now - lastUpdate) / 1000;
+      
+      const recovered = Math.floor(elapsedSeconds / RECHARGE_RATE);
+      const remainder = elapsedSeconds % RECHARGE_RATE;
+      const secondsLeft = Math.max(0, Math.ceil(RECHARGE_RATE - remainder));
 
-            // <-- BỔ SUNG: 4. GỌI BỘ ĐẾM SAU KHI TÔ MÀU THÀNH CÔNG -->
-            incrementPixelCount();
-            console.log("Pixel placed successfully. Counter has been incremented.");
-
-        } catch (err) {
-            console.error("❌ Lỗi khi gửi pixel:", err.response?.data?.message || err.message);
-        }
-
-        onPixelSelect(null);
-        setIsPaletteVisible(false);
+      // Update UI giả lập
+      const simulatedEnergy = Math.min(maxEnergy, user.energy + recovered);
+      if (simulatedEnergy !== energy) {
+         setEnergy(simulatedEnergy);
+      }
+      setNextRecoverSeconds(secondsLeft);
     };
 
-    const handlePaintButtonClick = () => {
-        setIsPaletteVisible(!isPaletteVisible);
-    };
+    calculateTimer();
+    const interval = setInterval(calculateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [user, energy, maxEnergy]);
 
-    return (
-        <div className="paint-controls-container">
-            {isPaletteVisible && (
-                <div className="color-palette">
-                    {colors.map(colorSwatch => (
-                        <button
-                            key={colorSwatch}
-                            className={`color-swatch ${selectedColor === colorSwatch ? 'selected' : ''}`}
-                            style={{ backgroundColor: colorSwatch }}
-                            onClick={() => handleColorSelect(colorSwatch)}
-                            title={colorSwatch}
-                        />
-                    ))}
-                </div>
-            )}
-            <button className="paint-button" onClick={handlePaintButtonClick} title="Choose Color">
-                <div className="current-color-display" style={{ backgroundColor: selectedColor }} />
-                Paint
-            </button>
+  const cancelPainting = useCallback(() => {
+    setPendingPixels([]);
+    setIsPaletteVisible(false);
+  }, [setPendingPixels, setIsPaletteVisible]);
+
+  const togglePalette = () => {
+    if (!canPaint) {
+      alert("Vui lòng zoom vào để tô màu.");
+      return;
+    }
+    if (!isLoggedIn) {
+      onLoginRequired();
+      return;
+    }
+    setIsPaletteVisible(true);
+  };
+
+  const handleColorSelect = (color) => {
+    const finalColor = color === CLEAR_COLOR ? "transparent" : color;
+    setSelectedPixelColor(finalColor);
+    localStorage.setItem("last_selected_color", finalColor);
+    
+    // Nếu đang chọn 1 pixel thì đổi màu luôn, nhiều pixel thì không đổi
+    setPendingPixels((prev) => {
+      if (prev.length === 1) {
+        return prev.map((p) => ({ ...p, color: finalColor }));
+      }
+      return prev;
+    });
+  };
+
+  const handleConfirmPaint = async () => {
+    if (isSubmitting) return;
+    if (pendingPixels.length === 0) {
+      alert("Chọn ít nhất 1 pixel trên bản đồ để tô.");
+      return;
+    }
+    if (pendingPixels.length > energy) {
+      alert(`Không đủ năng lượng (Cần ${pendingPixels.length}).`);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await Promise.all(
+        pendingPixels.map(async (pixel) => {
+             await api.post("/pixels", { gx: pixel.gx, gy: pixel.gy, color: pixel.color });
+        })
+      );
+      await refreshUser(); // Lấy năng lượng chuẩn từ server
+      alert(`Đã tô thành công!`);
+      cancelPainting();
+    } catch (err) {
+      console.error(err);
+      alert(`Lỗi: ${err.response?.data?.error || "Không thể tô màu"}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const formatTime = (s) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="paint-controls-overlay">
+      {isPaletteVisible ? (
+        <div className="palette-panel">
+          <div className="palette-header">
+            <div className="palette-title">
+              <span className="title-main">Tô màu</span>
+              <span className="title-sub">Chọn màu & Click bản đồ</span>
+            </div>
+            <div className="energy-pill">
+              {energy}/{maxEnergy} ⚡ ({energy < maxEnergy ? formatTime(nextRecoverSeconds) : 'Full'})
+            </div>
+            <button className="icon-button" onClick={cancelPainting}>×</button>
+          </div>
+
+          <div className="color-grid">
+            {ALL_COLORS.map((c) => {
+              const isClear = c === CLEAR_COLOR;
+              const active = selectedPixelColor === (isClear ? "transparent" : c);
+              return (
+                <button
+                  key={c}
+                  className={`swatch ${active ? "swatch-active" : ""} ${isClear ? "swatch-clear" : ""}`}
+                  style={{ background: isClear ? "#fff" : c }}
+                  onClick={() => handleColorSelect(c)}
+                >
+                  {isClear ? "X" : ""}
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            className="paint-button"
+            onClick={handleConfirmPaint}
+            disabled={isSubmitting || pendingPixels.length === 0 || pendingPixels.length > energy}
+          >
+            {isSubmitting ? "Đang tô..." : `Tô ${pendingPixels.length} Pixel`}
+          </button>
         </div>
-    );
+      ) : (
+        !isPixelInfoModalOpen && (
+          <button className="paint-fab" onClick={togglePalette} disabled={!canPaint}>
+            <span style={{marginRight: 5}}>🖌️</span> 
+            Paint ({energy}/{maxEnergy})
+          </button>
+        )
+      )}
+    </div>
+  );
 };
 
 export default PaintControls;

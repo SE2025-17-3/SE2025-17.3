@@ -1,3 +1,4 @@
+// D:\Code\SE2025-17.3\map-server\backend\src\controllers\leaderboardController.js
 import Pixel from '../models/Pixel.js';
 import PixelEvent from '../models/PixelEvent.js';
 import User from '../models/User.js';
@@ -47,12 +48,12 @@ export const getTopPlayers = async (req, res) => {
 
     const top = await PixelEvent.aggregate([
       { $match: match },
-      { $group: { _id: '$userId', pixelCount: { $sum: 1 }, lastActivity: { $max: '$createdAt' } } },
-      { $sort: { pixelCount: -1, lastActivity: -1 } },
+      { $group: { _id: '$userId', pixels: { $sum: 1 }, lastActivity: { $max: '$createdAt' } } },
+      { $sort: { pixels: -1, lastActivity: -1 } },
       { $limit: limitNumber(limit) },
       { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
       { $unwind: '$user' },
-      { $project: { _id: 0, userId: '$_id', username: '$user.username', teamId: '$user.teamId', pixelCount: 1, lastActivity: 1 } },
+      { $project: { _id: 0, userId: '$_id', username: '$user.username', teamId: '$user.teamId', pixels: 1, lastActivity: 1 } },
     ]);
 
     res.json({ period, count: top.length, data: top });
@@ -78,12 +79,12 @@ export const getTopTeams = async (req, res) => {
       { $unwind: '$user' },
       // Filter to only those with a non-null teamId
       { $match: { 'user.teamId': { $ne: null } } },
-      { $group: { _id: '$user.teamId', pixelCount: { $sum: 1 }, lastActivity: { $max: '$createdAt' } } },
-      { $sort: { pixelCount: -1, lastActivity: -1 } },
+      { $group: { _id: '$user.teamId', pixels: { $sum: 1 }, lastActivity: { $max: '$createdAt' } } },
+      { $sort: { pixels: -1, lastActivity: -1 } },
       { $limit: limitNumber(limit) },
       { $lookup: { from: 'teams', localField: '_id', foreignField: '_id', as: 'team' } },
       { $unwind: '$team' },
-      { $project: { _id: 0, teamId: '$_id', teamName: '$team.name', memberCount: '$team.memberCount', pixelCount: 1, lastActivity: 1 } },
+      { $project: { _id: 0, teamId: '$_id', teamName: '$team.name', pixels: 1, lastActivity: 1 } },
     ];
 
     const top = await PixelEvent.aggregate(pipeline);
@@ -108,14 +109,14 @@ export const getLeaderboardCombined = async (req, res) => {
     // Players
     const playersPromise = PixelEvent.aggregate([
       { $match: { ...matchBase, userId: { $ne: null } } },
-      { $group: { _id: '$userId', pixelCount: { $sum: 1 }, lastActivity: { $max: '$createdAt' } } },
-      { $sort: { pixelCount: -1, lastActivity: -1 } },
+      { $group: { _id: '$userId', pixels: { $sum: 1 }, lastActivity: { $max: '$createdAt' } } },
+      { $sort: { pixels: -1, lastActivity: -1 } },
       { $limit: playersLimitVal },
       { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
       { $unwind: '$user' },
       { $lookup: { from: 'teams', localField: 'user.teamId', foreignField: '_id', as: 'team' } },
       { $unwind: { path: '$team', preserveNullAndEmptyArrays: true } },
-      { $project: { _id: 0, userId: '$_id', username: '$user.username', teamName: '$team.name', pixelCount: 1, lastActivity: 1 } },
+      { $project: { _id: 0, userId: '$_id', username: '$user.username', teamName: '$team.name', pixels: 1, lastActivity: 1 } },
     ]);
 
     // Teams
@@ -124,12 +125,12 @@ export const getLeaderboardCombined = async (req, res) => {
       { $lookup: { from: 'users', localField: 'userId', foreignField: '_id', as: 'user' } },
       { $unwind: '$user' },
       { $match: { 'user.teamId': { $ne: null } } },
-      { $group: { _id: '$user.teamId', pixelCount: { $sum: 1 }, lastActivity: { $max: '$createdAt' } } },
-      { $sort: { pixelCount: -1, lastActivity: -1 } },
+      { $group: { _id: '$user.teamId', pixels: { $sum: 1 }, lastActivity: { $max: '$createdAt' } } },
+      { $sort: { pixels: -1, lastActivity: -1 } },
       { $limit: teamsLimitVal },
       { $lookup: { from: 'teams', localField: '_id', foreignField: '_id', as: 'team' } },
       { $unwind: '$team' },
-      { $project: { _id: 0, teamId: '$_id', teamName: '$team.name', memberCount: '$team.memberCount', pixelCount: 1, lastActivity: 1 } },
+      { $project: { _id: 0, teamId: '$_id', teamName: '$team.name', pixels: 1, lastActivity: 1 } },
     ]);
 
     const [players, teams] = await Promise.all([playersPromise, teamsPromise]);

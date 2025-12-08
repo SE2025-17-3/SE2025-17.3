@@ -1,4 +1,4 @@
-// backend/src/routes/authRoutes.js
+// D:\Code\SE2025-17.3\map-server\backend\src\routes\authRoutes.js
 
 import express from 'express';
 import { registerUser, loginUser, logoutUser } from '../controllers/authController.js';
