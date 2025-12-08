@@ -1,16 +1,32 @@
-// D:\Code\SE2025-17.3\map-server\frontend\src\context\SocketContext.jsx
-
 import React, { createContext, useContext, useEffect } from 'react';
 import io from 'socket.io-client';
 
-// Địa chỉ backend của bạn (có thể lấy từ .env của Vite)
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+// --- LOGIC XÁC ĐỊNH URL BACKEND ---
+// 1. Nếu có biến môi trường VITE_BACKEND_URL thì ưu tiên dùng.
+// 2. Nếu đang chạy Production (Docker/Server), dùng chính domain hiện tại (window.location.origin).
+//    Lý do: Nginx ở port 80 sẽ tự động proxy request socket vào backend port 4000.
+// 3. Nếu đang chạy Dev dưới local, dùng localhost:4000.
+const getBackendUrl = () => {
+    if (import.meta.env.VITE_BACKEND_URL) return import.meta.env.VITE_BACKEND_URL;
+    if (import.meta.env.PROD) return window.location.origin; // Tự động lấy http://136.112.99.88
+    return 'http://localhost:4000';
+};
 
-const socket = io(BACKEND_URL, {
-  // Tùy chọn: Tự động kết nối lại nếu mất mạng
-  reconnectionAttempts: 5, 
-  reconnectionDelay: 1000,
-}); 
+const socket = io(getBackendUrl(), {
+    // Quan trọng: Đường dẫn này phải khớp với 'location /socket.io/' trong nginx.conf
+    path: '/socket.io/',
+
+    // Tùy chọn: Tự động kết nối lại nếu mất mạng
+    reconnectionAttempts: 10,
+    reconnectionDelay: 1000,
+
+    // Giúp kết nối ổn định hơn qua Nginx Proxy
+    transports: ['websocket', 'polling'],
+
+    // Gửi cookie (nếu bạn dùng session cookie)
+    withCredentials: true,
+});
+
 const SocketContext = createContext(socket);
 
 /**
@@ -24,11 +40,20 @@ export const useSocket = () => {
  * Component Provider để bọc ứng dụng của bạn (trong main.jsx).
  */
 export const SocketProvider = ({ children }) => {
-    // (Tùy chọn) Thêm log để biết kết nối thành công hay thất bại
     useEffect(() => {
-        const handleConnect = () => console.log('🔗 Đã kết nối Socket.IO:', socket.id);
-        const handleDisconnect = () => console.log('🔌 Đã ngắt kết nối Socket.IO');
-        const handleConnectError = (err) => console.error('❌ Lỗi kết nối Socket.IO:', err);
+        // Log trạng thái để dễ debug
+        const handleConnect = () => {
+            console.log('✅ Đã kết nối Socket.IO tới:', getBackendUrl());
+            console.log('ID:', socket.id);
+        };
+
+        const handleDisconnect = (reason) => {
+            console.warn('🔌 Đã ngắt kết nối Socket.IO. Lý do:', reason);
+        };
+
+        const handleConnectError = (err) => {
+            console.error('❌ Lỗi kết nối Socket.IO:', err.message);
+        };
 
         socket.on('connect', handleConnect);
         socket.on('disconnect', handleDisconnect);

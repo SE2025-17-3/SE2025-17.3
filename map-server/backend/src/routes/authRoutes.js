@@ -41,11 +41,5 @@ router.post('/login', verifyRecaptcha, loginValidation, loginUser);
 router.post('/logout', protect, logoutUser);
 
 
-// --- 3. SỬA LỖI: Xóa các route bị trùng lặp và sai ---
-// Các dòng code bên dưới đã bị xóa vì chúng sai và thừa.
-// router.post('/register', registerValidation, registerUser); // Bị dòng dưới ghi đè
-// router.post('/login', loginValidation, loginUser); // Bị dòng dưới ghi đè
-// router.post('/register', verifyRecaptchaV3, register); // Sai tên controller
-// router.post('/login', verifyRecaptchaV3, login); // Sai tên controller
 
 export default router;
