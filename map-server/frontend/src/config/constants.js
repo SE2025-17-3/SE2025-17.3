@@ -31,4 +31,4 @@ export const VISUAL_BOUNDS = L.latLngBounds([-85.05112878, -Infinity], [85.05112
 export const CHUNK_SIZE = 256;
 
 // Mức zoom tối thiểu để bắt đầu load/vẽ pixel (giữ mức 4 để nhìn bao quát)
-export const MIN_ZOOM_TO_SHOW_PIXELS = 4;
+export const MIN_ZOOM_TO_SHOW_PIXELS = 7;
