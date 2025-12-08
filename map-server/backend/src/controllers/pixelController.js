@@ -61,6 +61,8 @@ export const getChunk = async (req, res) => {
 // --- 2. ĐẶT PIXEL (CÓ XÓA CACHE) ---
 export const addPixel = async (req, res, io) => {
   const { gx, gy, color } = req.body;
+  const gxNum = Number(req.body.gx);
+  const gyNum = Number(req.body.gy);
 
   if (typeof gx !== 'number' || typeof gy !== 'number' || !color) {
     return res.status(400).json({ error: "Thiếu thông tin." });
@@ -89,13 +91,19 @@ export const addPixel = async (req, res, io) => {
 
     // Lưu Pixel vào DB
     if (isClear) {
-      await Pixel.findOneAndDelete({ gx, gy });
+        await Pixel.findOneAndDelete({ gx: gxNum, gy: gyNum });
+        updatedPixel = { gx: gxNum, gy: gyNum, color: 'transparent', userId: null };
     } else {
-      await Pixel.findOneAndUpdate(
-          { gx, gy },
-          { color, userId },
-          { new: true, upsert: true } // upsert: true quan trọng
-      );
+        updatedPixel = await Pixel.findOneAndUpdate(
+            { gx: gxNum, gy: gyNum },
+            { 
+                color, 
+                userId,
+                gx: gxNum, 
+                gy: gyNum
+            }, 
+            { new: true, upsert: true, select: 'gx gy color userId' }
+        );
     }
 
     // 🔥 QUAN TRỌNG: XÓA CACHE REDIS CỦA CHUNK CHỨA PIXEL NÀY
