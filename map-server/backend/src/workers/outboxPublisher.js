@@ -10,6 +10,7 @@ class OutboxPublisher {
   constructor(options = {}) {
     this.pollInterval = options.pollInterval || 100; // Poll every 100ms
     this.batchSize = options.batchSize || 50; // Process 50 events at a time
+    this.maxRetries = options.maxRetries || 5; // Max retry attempts before DLQ
     this.isRunning = false;
     this.pollTimer = null;
     this.redis = null;
@@ -92,11 +93,21 @@ class OutboxPublisher {
         console.error(`❌ Failed to publish event ${event._id}:`, err);
         
         // Record failure
-        await Outbox.recordFailure(event._id, err.message);
+        const updatedEvent = await Outbox.recordFailure(event._id, err.message);
         
-        // If too many failures, we could implement dead letter queue
-        if (event.attempts >= 5) {
-          console.error(`💀 Event ${event._id} has failed ${event.attempts} times - needs manual intervention`);
+        // Check if we should move to DLQ
+        if (updatedEvent.attempts >= this.maxRetries) {
+          await Outbox.moveToDeadLetterQueue(
+            event._id,
+            `Failed after ${this.maxRetries} attempts`,
+          );
+
+          console.error(`💀 Event ${event._id} moved to DLQ after ${this.maxRetries} attempts`);
+          console.error(`   Event type: ${event.eventType}`);
+          console.error(`   Payload: ${JSON.stringify(event.payload)}`);
+          console.error(`   Last error: ${err.message}`)
+        } else {
+          console.warn(`⚠️ Event ${event._id} will retry (attempt ${updatedEvent.attempts}/${this.maxRetries})`);
         }
       }
     }
@@ -125,6 +136,24 @@ class OutboxPublisher {
 
     // Mark as published in database
     await Outbox.markAsPublished(_id);
+  }
+
+  // NEW: Method to send alerts when events move to DLQ
+  async sendDLQAlert(event, error) {
+    // Implement your alerting logic here
+    // Examples:
+    // - Send to Slack webhook
+    // - Send to PagerDuty
+    // - Send email
+    // - Log to monitoring service
+    
+    console.log('🚨 DLQ Alert would be sent here');
+    // await fetch('https://hooks.slack.com/...', { 
+    //   method: 'POST',
+    //   body: JSON.stringify({
+    //     text: `Event ${event._id} moved to DLQ: ${error.message}`
+    //   })
+    // });
   }
 
   /**

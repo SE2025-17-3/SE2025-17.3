@@ -32,7 +32,8 @@ class StreamConsumer {
       if (err.message.includes('BUSYGROUP')) {
         console.log(`ℹ️ Consumer group "${CONSUMER_GROUPS.PIXEL_BROADCASTERS}" already exists`);
       } else {
-        throw err;
+        console.warn(`⚠️ Could not initialize consumer group (Redis might be down):`, err.message);
+        // Don't throw - let the consumer start and retry later
       }
     }
   }

@@ -82,6 +82,7 @@ app.configureRoutes(io); // Pass io to routes for Socket.IO events
 const outboxPublisher = getOutboxPublisher({
   pollInterval: 100, // Poll every 100ms
   batchSize: 50,
+  maxRetries: 5, // Move to DLQ after 5 failed attempts
 });
 
 const streamConsumer = new StreamConsumer(io, {
@@ -90,7 +91,7 @@ const streamConsumer = new StreamConsumer(io, {
   batchSize: 10,
 });
 
-// Start workers
+// Start workers (don't exit if they fail - for DLQ testing)
 (async () => {
   try {
     await outboxPublisher.start();
@@ -98,7 +99,8 @@ const streamConsumer = new StreamConsumer(io, {
     console.log('✅ All workers started successfully');
   } catch (err) {
     console.error('❌ Failed to start workers:', err);
-    process.exit(1);
+    console.warn('⚠️ Server will continue running for DLQ testing');
+    console.warn('⚠️ Pixels will be queued in Outbox and retry when Redis is available');
   }
 })();
 

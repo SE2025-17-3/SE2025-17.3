@@ -17,10 +17,11 @@ let generalClient = null;
 export const getPublisher = () => {
   if (!publisherClient) {
     publisherClient = new Redis(REDIS_URL, {
-      enableReadyCheck: true,
-      maxRetriesPerRequest: 3,
+      enableReadyCheck: false, // Don't check connection on startup
+      maxRetriesPerRequest: null, // Retry indefinitely (for DLQ testing)
+      lazyConnect: true, // Don't connect immediately
       retryStrategy(times) {
-        const delay = Math.min(times * 50, 2000);
+        const delay = 5000;
         return delay;
       },
       reconnectOnError(err) {
@@ -32,6 +33,11 @@ export const getPublisher = () => {
     publisherClient.on('connect', () => console.log('🔗 Redis Publisher connected'));
     publisherClient.on('error', (err) => console.error('❌ Redis Publisher error:', err));
     publisherClient.on('close', () => console.log('🔌 Redis Publisher disconnected'));
+    
+    // Try to connect but don't fail if it doesn't work
+    publisherClient.connect().catch(err => {
+      console.warn('⚠️ Redis Publisher initial connection failed, will retry:', err.message);
+    });
   }
   return publisherClient;
 };
@@ -42,10 +48,11 @@ export const getPublisher = () => {
 export const getSubscriber = () => {
   if (!subscriberClient) {
     subscriberClient = new Redis(REDIS_URL, {
-      enableReadyCheck: true,
-      maxRetriesPerRequest: 3,
+      enableReadyCheck: false, // Don't check connection on startup
+      maxRetriesPerRequest: null, // Retry indefinitely (for DLQ testing)
+      lazyConnect: true, // Don't connect immediately
       retryStrategy(times) {
-        const delay = Math.min(times * 50, 2000);
+        const delay = 5000;
         return delay;
       },
       reconnectOnError(err) {
@@ -57,6 +64,11 @@ export const getSubscriber = () => {
     subscriberClient.on('connect', () => console.log('🔗 Redis Subscriber connected'));
     subscriberClient.on('error', (err) => console.error('❌ Redis Subscriber error:', err));
     subscriberClient.on('close', () => console.log('🔌 Redis Subscriber disconnected'));
+    
+    // Try to connect but don't fail if it doesn't work
+    subscriberClient.connect().catch(err => {
+      console.warn('⚠️ Redis Subscriber initial connection failed, will retry:', err.message);
+    });
   }
   return subscriberClient;
 };
@@ -70,7 +82,7 @@ export const getRedisClient = () => {
       enableReadyCheck: true,
       maxRetriesPerRequest: 3,
       retryStrategy(times) {
-        const delay = Math.min(times * 50, 2000);
+        const delay = 5000;
         return delay;
       },
       reconnectOnError(err) {
@@ -89,18 +101,28 @@ export const getRedisClient = () => {
 /**
  * Gracefully close all Redis connections
  */
+// In redis.js - closeAllRedisConnections()
 export const closeAllRedisConnections = async () => {
   console.log('🔌 Closing all Redis connections...');
   const promises = [];
   
   if (publisherClient) {
-    promises.push(publisherClient.quit().catch(err => console.error('Error closing publisher:', err)));
+    promises.push(
+      publisherClient.disconnect()  // Changed from .quit()
+        .catch(err => console.error('Error closing publisher:', err.message))
+    );
   }
   if (subscriberClient) {
-    promises.push(subscriberClient.quit().catch(err => console.error('Error closing subscriber:', err)));
+    promises.push(
+      subscriberClient.disconnect()  // Changed from .quit()
+        .catch(err => console.error('Error closing subscriber:', err.message))
+    );
   }
   if (generalClient) {
-    promises.push(generalClient.quit().catch(err => console.error('Error closing general client:', err)));
+    promises.push(
+      generalClient.disconnect()  // Changed from .quit()
+        .catch(err => console.error('Error closing general client:', err.message))
+    );
   }
   
   await Promise.all(promises);
