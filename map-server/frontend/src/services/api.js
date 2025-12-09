@@ -1,34 +1,37 @@
 import axios from 'axios';
 
-// Hàm xác định URL Backend tự động
 const getBaseUrl = () => {
-  // 1. Ưu tiên biến môi trường (nếu có)
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-
-  // 2. Môi trường Production (Docker/Server)
-  // Lấy chính domain hiện tại (http://136.112.99.88)
-  // Nginx sẽ tự điều hướng các path như /auth, /users vào backend
-  if (import.meta.env.PROD) {
-    return window.location.origin + '/api' ;
-  }
-
-  // 3. Môi trường Dev (Localhost)
-  // Lưu ý: Nếu server local của bạn không dùng prefix /api, hãy xóa đuôi /api đi
-  // Dựa vào server.js bạn gửi lúc đầu, có vẻ bạn không dùng prefix /api global.
-  return 'http://localhost:4000/api';
+    if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+    if (import.meta.env.PROD) return window.location.origin + '/api';
+    return 'http://localhost:4000/api';
 };
 
 const api = axios.create({
-  baseURL: getBaseUrl(),
-  withCredentials: true, // ⚠️ Quan trọng: Gửi cookie session kèm theo request
+    baseURL: getBaseUrl(),
+    withCredentials: true,
 });
 
-// Thêm interceptor để log lỗi (tùy chọn, giúp debug dễ hơn trên server)
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-      console.error("API Error:", error.response?.status, error.response?.data);
-      return Promise.reject(error);
+        // 1. Kiểm tra kỹ xem có phải lỗi do hủy request không
+        // CanceledError là tên lỗi mới của Axios, ERR_CANCELED là code
+        if (axios.isCancel(error) || error.code === "ERR_CANCELED" || error.name === "CanceledError") {
+            // Im lặng, không log gì cả
+            return Promise.reject(error);
+        }
+
+        // 2. Chỉ log khi là lỗi thật sự (có response từ server)
+        if (error.response) {
+            console.error("❌ API Error:", error.response.status, error.response.data);
+        } else if (error.request) {
+            // Lỗi không nhận được phản hồi (Network Error)
+            console.error("🔥 Network Error (No Response):", error.message);
+        } else {
+            console.error("⚠️ Error:", error.message);
+        }
+
+        return Promise.reject(error);
     }
 );
 
