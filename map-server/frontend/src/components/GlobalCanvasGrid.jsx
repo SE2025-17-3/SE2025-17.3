@@ -116,14 +116,15 @@ const GlobalCanvasGrid = ({
     // --- 4. LOAD DATA TỪ API ---
     // --- 4. LOAD DATA TỪ API (DEBUG VERSION) ---
     // --- LOAD DATA TỪ API (PHIÊN BẢN SIÊU DEBUG) ---
+    // --- LOAD DATA TỪ API (PHIÊN BẢN SIÊU DEBUG) ---
     const loadVisibleChunks = useCallback(async () => {
         const zoom = map.getZoom();
 
         // CHECKPOINT 1: Kiểm tra Zoom
-        //console.log(`🚀 [1] Hàm loadVisibleChunks đã chạy! Zoom: ${zoom}`);
+        console.log(`🚀 [1] Hàm loadVisibleChunks đã chạy! Zoom: ${zoom}`);
 
         if (zoom < MIN_ZOOM_TO_SHOW_PIXELS) {
-            //console.log(`🛑 Zoom quá nhỏ (cần >= ${MIN_ZOOM_TO_SHOW_PIXELS}), dừng tải.`);
+            console.log(`🛑 Zoom quá nhỏ (cần >= ${MIN_ZOOM_TO_SHOW_PIXELS}), dừng tải.`);
             return;
         }
 
@@ -156,7 +157,7 @@ const GlobalCanvasGrid = ({
         }
 
         // CHECKPOINT 2: Kiểm tra số lượng chunk cần tải
-        //console.log(`📦 [2] Cần tải ${chunksToLoad.length} chunks.`);
+        console.log(`📦 [2] Cần tải ${chunksToLoad.length} chunks.`);
 
         if (chunksToLoad.length === 0) return;
 
@@ -167,16 +168,16 @@ const GlobalCanvasGrid = ({
                         // CHECKPOINT 3: Kiểm tra dữ liệu thô từ API
                         // Quan trọng: Kiểm tra xem nó có phải là mảng không?
                         const isArr = Array.isArray(res.data);
-                        //console.log(`📡 [3] API Chunk ${x}:${y} -> Status: ${res.status}, Là mảng? ${isArr}, Số lượng: ${isArr ? res.data.length : 'N/A'}`);
+                        console.log(`📡 [3] API Chunk ${x}:${y} -> Status: ${res.status}, Là mảng? ${isArr}, Số lượng: ${isArr ? res.data.length : 'N/A'}`);
 
                         // Nếu không phải mảng, in ra xem nó là cái quái gì
-                        if (!isArr) //console.warn("⚠️ API trả về không phải mảng:", res.data);
+                        if (!isArr) console.warn("⚠️ API trả về không phải mảng:", res.data);
 
                         return res.data;
                     })
                     .catch(err => {
                         if (err.name !== 'CanceledError' && err.code !== "ERR_CANCELED") {
-                            //console.error(`❌ [Lỗi tải] Chunk ${x}:${y}`, err.message);
+                            console.error(`❌ [Lỗi tải] Chunk ${x}:${y}`, err.message);
                         }
                         return null;
                     })
@@ -197,21 +198,21 @@ const GlobalCanvasGrid = ({
             });
 
             // CHECKPOINT 4: Kết quả tổng hợp
-            //console.log(`📊 [4] Tổng hợp được ${pixelCount} pixels.`);
+            console.log(`📊 [4] Tổng hợp được ${pixelCount} pixels.`);
 
             if (pixelCount > 0) {
                 setPixels(prev => {
                     const merged = new Map(prev);
                     newPixels.forEach((val, key) => merged.set(key, val));
-                    //console.log(`💾 [5] State updated thành công! Tổng pixel hiển thị: ${merged.size}`);
+                    console.log(`💾 [5] State updated thành công! Tổng pixel hiển thị: ${merged.size}`);
                     return merged;
                 });
             } else {
-                //console.log("⚠️ [5] Không có pixel nào để update (pixelCount = 0)");
+                console.log("⚠️ [5] Không có pixel nào để update (pixelCount = 0)");
             }
 
         } catch (error) {
-            //console.error("🔥 Lỗi nghiêm trọng:", error);
+            console.error("🔥 Lỗi nghiêm trọng:", error);
         }
     }, [map, latLngToGrid]);
 
