@@ -1,42 +1,57 @@
 version: '3.8'
 
 services:
-  # Database Redis
+  # 1. Redis Local (Chạy trong Docker)
   redis:
     image: redis:alpine
-    container_name: map_redis
+    container_name: map_redis_local
     restart: always
+    ports:
+      - "6379:6379"
     volumes:
-      - redis_data:/data
+      - redis_data_local:/data
     networks:
       - app-network
 
-  # Backend - Kéo từ Docker Hub
+  # 2. Backend
   backend:
-    # Thay 'your_dockerhub_user' bằng username thật của bạn trong file này hoặc để biến môi trường xử lý
-    image: august0508/map-backend:latest
-    container_name: map_backend
+    build: ./backend
+    container_name: map_backend_local
     restart: always
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     depends_on:
       - redis
+    ports:
+      - "4000:4000"
+
+    # --- QUAN TRỌNG: Đọc file .env từ thư mục backend ---
+    env_file:
+      - ./backend/.env
+
+    # --- CÁC BIẾN GHI ĐÈ (Override) ---
+    # Các biến dưới đây sẽ ghi đè giá trị trong file ./backend/.env
+    # Lý do: Trong file .env bạn thường để Redis là localhost,
+    # nhưng trong Docker nó phải tên là "redis" thì mới nhìn thấy nhau.
     environment:
       - PORT=4000
-      - NODE_ENV=production
-      - REDIS_HOST=redis
+      - NODE_ENV=development
+      - REDIS_HOST=map_redis_local
       - REDIS_PORT=6379
-      - FRONTEND_URL=http://136.112.99.88
-      # Các biến mật sẽ được inject từ file .env trên server
-      - MONGO_URI=${MONGO_URI}
-      - DATABASE_URL=${DATABASE_URL}
-      - SESSION_SECRET=${SESSION_SECRET}
-      - RECAPTCHA_V2_SECRET_KEY=${RECAPTCHA_V2_SECRET_KEY}
+      - FRONTEND_URL=http://localhost
+      # Lưu ý: MONGO_URI, SESSION_SECRET... sẽ tự lấy từ file ./backend/.env
     networks:
       - app-network
 
-  # Frontend - Kéo từ Docker Hub
+  # 3. Frontend
   frontend:
-    image: august0508/map-frontend:latest
-    container_name: map_frontend
+    build:
+      context: ./frontend
+      args:
+        # Truyền key public lúc build (cần hardcode hoặc lấy từ env máy chủ)
+        - VITE_RECAPTCHA_V2_SITE_KEY=6Ldw9AEsAAAAAIv-Mox6r0v0dH0I7VnMkJpOLTcH
+    container_name: map_frontend_local
     restart: always
     ports:
       - "80:80"
@@ -46,7 +61,7 @@ services:
       - app-network
 
 volumes:
-  redis_data:
+  redis_data_local:
 
 networks:
   app-network:
