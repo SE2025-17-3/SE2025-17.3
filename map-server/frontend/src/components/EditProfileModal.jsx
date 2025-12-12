@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+// frontend/src/components/EditProfileModal.jsx
+
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import './EditProfileModal.css';
@@ -6,10 +8,7 @@ import './EditProfileModal.css';
 const EditProfileModal = ({ closeModal }) => {
     const { user, updateUserContext } = useAuth();
 
-    // --- SỬA LỖI URL ---
-    // Hàm này giúp lấy đúng đường dẫn server chứa ảnh
-    // 1. Nếu build production -> Lấy origin hiện tại (http://136.112.99.88)
-    // 2. Nếu chạy dev -> Lấy localhost:4000
+    // --- GIỮ NGUYÊN HÀM getBaseUrl NHƯ YÊU CẦU ---
     const getBaseUrl = () => {
         if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
         if (import.meta.env.PROD) return window.location.origin;
@@ -17,7 +16,7 @@ const EditProfileModal = ({ closeModal }) => {
     };
 
     const API_URL = getBaseUrl();
-    // -------------------
+    // ----------------------------------------------
 
     const [displayName, setDisplayName] = useState(user.displayName || '');
     const [avatarFile, setAvatarFile] = useState(null);
@@ -25,11 +24,23 @@ const EditProfileModal = ({ closeModal }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
+    // Dọn dẹp URL preview khi component unmount hoặc khi ảnh thay đổi
+    // (Giúp tránh rò rỉ bộ nhớ và giảm giật)
+    useEffect(() => {
+        return () => {
+            if (preview) {
+                URL.revokeObjectURL(preview);
+            }
+        };
+    }, [preview]);
+
     const handleAvatarChange = (e) => {
         const file = e.target.files[0];
         if (file) {
             setAvatarFile(file);
-            setPreview(URL.createObjectURL(file));
+            // Tạo URL mới
+            const objectUrl = URL.createObjectURL(file);
+            setPreview(objectUrl);
         }
     };
 
@@ -45,10 +56,12 @@ const EditProfileModal = ({ closeModal }) => {
         }
 
         try {
+            // Lưu ý: Endpoint là /users/profile hay /users/me tuỳ vào backend của bạn
+            // Ở đây tôi giữ nguyên theo code cũ của bạn là /users/profile
             const { data } = await api.patch('/users/profile', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
-            updateUserContext(data); // Cập nhật state toàn cục
+            updateUserContext(data);
             closeModal();
         } catch (err) {
             console.error(err);
@@ -58,16 +71,23 @@ const EditProfileModal = ({ closeModal }) => {
         }
     };
 
-    // Helper để hiển thị ảnh: Nếu có preview (vừa chọn) thì dùng preview,
-    // nếu không thì dùng ảnh từ server (kèm API_URL)
+    // Helper hiển thị ảnh an toàn, không bị lỗi đường dẫn
     const getAvatarSrc = () => {
+        // 1. Ưu tiên ảnh vừa chọn (Preview)
         if (preview) return preview;
-        if (user.avatarUrl) {
-            // Kiểm tra xem avatarUrl có phải là link tuyệt đối (http...) hay tương đối
-            if (user.avatarUrl.startsWith('http')) return user.avatarUrl;
-            return `${API_URL}${user.avatarUrl}`;
-        }
-        return null; // Hoặc đường dẫn ảnh default nếu muốn
+
+        // 2. Nếu không có ảnh trong DB, dùng ảnh mặc định local
+        if (!user.avatarUrl) return '/default-avatar.png';
+
+        // 3. Nếu là ảnh Google (http...)
+        if (user.avatarUrl.startsWith('http')) return user.avatarUrl;
+
+        // 4. Nếu là ảnh server, nối API_URL vào
+        // Xử lý kỹ để tránh bị 2 dấu gạch chéo (//)
+        const cleanBase = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
+        const cleanPath = user.avatarUrl.startsWith('/') ? user.avatarUrl : `/${user.avatarUrl}`;
+
+        return `${cleanBase}${cleanPath}`;
     };
 
     return (
@@ -76,25 +96,58 @@ const EditProfileModal = ({ closeModal }) => {
                 <h2>Chỉnh sửa hồ sơ</h2>
                 <form onSubmit={handleSubmit}>
                     <div className="avatar-upload">
-                        <label htmlFor="avatar-input">
+                        <label htmlFor="avatar-input" style={{ cursor: 'pointer', display: 'block' }}>
                             <img
-                                src={getAvatarSrc() || '/default-avatar.png'}
+                                src={getAvatarSrc()}
                                 alt="Avatar Preview"
                                 className="avatar-preview"
-                                // Thêm xử lý lỗi nếu ảnh không load được
-                                onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.png'; }}
+                                // Thêm style này để tránh nhấp nháy chữ Alt Text khi đang load
+                                style={{
+                                    objectFit: 'cover',
+                                    backgroundColor: '#f0f0f0',
+                                    minHeight: '100px',
+                                    minWidth: '100px',
+                                    display: 'block'
+                                }}
+                                // Fallback nếu ảnh lỗi
+                                onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = '/default-avatar.png'; // Đảm bảo file này có trong public folder
+                                }}
                             />
+                            <div style={{ marginTop: '5px', fontSize: '0.9rem', color: '#007bff' }}>
+                                Thay đổi ảnh
+                            </div>
                         </label>
-                        <input id="avatar-input" type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
+                        <input
+                            id="avatar-input"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarChange}
+                            style={{ display: 'none' }}
+                        />
                     </div>
+
                     <div className="form-group">
                         <label htmlFor="name">Tên hiển thị</label>
-                        <input type="text" id="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+                        <input
+                            type="text"
+                            id="name"
+                            value={displayName}
+                            onChange={(e) => setDisplayName(e.target.value)}
+                            required
+                        />
                     </div>
+
                     {error && <p className="error-message">{error}</p>}
+
                     <div className="form-actions">
-                        <button type="button" onClick={closeModal} disabled={loading}>Đóng</button>
-                        <button type="submit" disabled={loading}>{loading ? 'Đang lưu...' : 'Lưu'}</button>
+                        <button type="button" onClick={closeModal} disabled={loading} className="btn-cancel">
+                            Đóng
+                        </button>
+                        <button type="submit" disabled={loading} className="btn-save">
+                            {loading ? 'Đang lưu...' : 'Lưu thay đổi'}
+                        </button>
                     </div>
                 </form>
             </div>

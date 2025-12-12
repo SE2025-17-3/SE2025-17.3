@@ -16,7 +16,8 @@ model User {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   username  String   @unique
   email     String   @unique
-  password  String
+  password  String?
+  googleId  String?  @unique
   teamId    String?  @db.ObjectId 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -36,6 +37,8 @@ model Team {
   createdBy   String   @db.ObjectId
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
 
   // Relations
   members     User[]   // 1 Team → many Users

@@ -1,12 +1,9 @@
-/* D:\Code\SE2025-17.3\map-server\frontend\src\components\EditProfileModal.css */
+/* frontend/src/components/EditProfileModal.css */
 
-.modal-backdrop {
+.modal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -14,100 +11,106 @@
 }
 
 .modal-content {
-    background-color: white;
-    padding: 24px;
+    background: white;
+    padding: 25px;
     border-radius: 12px;
-    width: 90%;
-    max-width: 400px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    width: 400px;
+    max-width: 90%;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
 }
 
-.modal-content h2 {
-    margin-top: 0;
-    margin-bottom: 20px;
-    font-size: 20px;
-    font-weight: 600;
-    text-align: center;
-}
-
-.avatar-upload {
+.modal-header {
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 20px;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+/* --- PHẦN AVATAR --- */
+.avatar-upload-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.avatar-preview-container {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-bottom: 10px;
+    border: 2px solid #eee;
+    background-color: #f0f0f0; /* Màu nền xám để khi ảnh chưa load không bị trắng trơn */
 }
 
 .avatar-preview {
-    width: 96px;
-    height: 96px;
-    border-radius: 50%;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
-    border: 2px solid #e5e7eb;
+    display: block; /* Quan trọng để tránh khoảng trắng dưới ảnh */
+}
+
+.upload-btn {
+    font-size: 13px;
+    color: #3498db;
     cursor: pointer;
-    display: block;
+    text-decoration: underline;
 }
 
 .form-group {
-    margin-bottom: 15px;
+    margin-bottom: 20px;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 6px;
-    font-size: 14px;
-    font-weight: 500;
+    margin-bottom: 5px;
+    font-weight: bold;
 }
 
 .form-group input {
     width: 100%;
-    padding: 10px 12px;
-    border: 1px solid #d1d5db;
+    padding: 10px;
+    border: 1px solid #ddd;
     border-radius: 6px;
-    font-size: 14px;
 }
 
-.form-actions {
+.modal-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
-    margin-top: 24px;
+    gap: 10px;
 }
 
-.form-actions button {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 500;
-    font-size: 14px;
-    transition: background-color 0.2s;
-}
-
-.form-actions button[type="button"] {
-    background-color: #e5e7eb;
-    color: #374151;
-}
-
-.form-actions button[type="button"]:hover {
-    background-color: #d1d5db;
-}
-
-.form-actions button[type="submit"] {
-    background-color: #3b82f6;
+.btn-cancel {
+    padding: 8px 16px;
+    background: #ccc;
     color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
 }
 
-.form-actions button[type="submit"]:hover {
-    background-color: #2563eb;
-}
-
-.form-actions button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+.btn-save {
+    padding: 8px 16px;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
 }
 
 .error-message {
-    color: #ef4444;
+    background-color: #ffeaea;
+    color: #e74c3c;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 15px;
     font-size: 14px;
-    text-align: center;
-    margin-top: 15px;
 }
