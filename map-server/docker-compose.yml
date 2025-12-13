@@ -11,9 +11,8 @@ services:
     networks:
       - app-network
 
-  # Backend - Kéo từ Docker Hub
+  # Backend
   backend:
-    # Thay 'your_dockerhub_user' bằng username thật của bạn trong file này hoặc để biến môi trường xử lý
     image: august0508/map-backend:latest
     container_name: map_backend
     restart: always
@@ -24,8 +23,9 @@ services:
       - NODE_ENV=production
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - FRONTEND_URL=http://136.112.99.88
-      # Các biến mật sẽ được inject từ file .env trên server
+      # QUAN TRỌNG: Đổi sang HTTPS và tên miền
+      - FRONTEND_URL=https://se2025-17-3.codes
+      # Các biến môi trường khác
       - MONGO_URI=${MONGO_URI}
       - DATABASE_URL=${DATABASE_URL}
       - SESSION_SECRET=${SESSION_SECRET}
@@ -33,13 +33,20 @@ services:
     networks:
       - app-network
 
-  # Frontend - Kéo từ Docker Hub
+  # Frontend
   frontend:
     image: august0508/map-frontend:latest
     container_name: map_frontend
     restart: always
     ports:
       - "80:80"
+      - "443:443" # <--- THÊM: Mở cổng HTTPS
+    volumes:
+      # <--- THÊM: Mount chứng chỉ từ máy chủ vào container (Chế độ chỉ đọc)
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      # <--- THÊM: Mount file nginx.conf nằm cùng thư mục docker-compose vào container
+      # Lưu ý: Nếu file config của bạn chỉ chứa khối 'server', hãy map vào /etc/nginx/conf.d/default.conf
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
     depends_on:
       - backend
     networks:
