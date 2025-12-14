@@ -77,8 +77,7 @@ export const addPixel = async (req, res, io) => {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  // Start transaction
-  const session = await mongoose.startSession();
+  let session = null;
 
   try {
     // Check user and energy BEFORE transaction
@@ -87,20 +86,24 @@ export const addPixel = async (req, res, io) => {
       return res.status(404).json({ error: "User not found" });
     }
 
+    // Calculate and check energy (with save) BEFORE transaction
     await calculateEnergy(user);
     if (user.energy <= 0) {
       return res.status(403).json({ error: "Hết năng lượng." });
     }
 
-    // Deduct energy
-    user.energy -= 1;
-    if (user.energy === (user.maxEnergy - 1)) {
-      user.lastEnergyUpdate = new Date();
-    }
-    await user.save();
+    // Start transaction for atomic writes
+    session = await mongoose.startSession();
 
-    // Execute atomic transaction: Pixel + PixelEvent + Outbox
+    // Execute atomic transaction: Energy deduction + Pixel + PixelEvent + Outbox
     await session.withTransaction(async () => {
+      // Deduct energy inside transaction
+      user.energy -= 1;
+      if (user.energy === (user.maxEnergy - 1)) {
+        user.lastEnergyUpdate = new Date();
+      }
+      await user.save({ session });
+
       // 1. Save/Delete pixel
       if (isClear) {
         await Pixel.findOneAndDelete({ gx, gy }, { session });
@@ -154,9 +157,18 @@ export const addPixel = async (req, res, io) => {
 
   } catch (err) {
     console.error("❌ Transaction failed:", err);
+    
+    // Handle validation errors
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({ error: err.message });
+    }
+    
     res.status(500).json({ error: "Lỗi server" });
   } finally {
-    await session.endSession();
+    // End session only if it was created
+    if (session) {
+      await session.endSession();
+    }
   }
 };
 
