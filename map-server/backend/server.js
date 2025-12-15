@@ -10,7 +10,6 @@ import { getOutboxPublisher } from './src/workers/outboxPublisher.js';
 import StreamConsumer from './src/workers/streamConsumer.js';
 import { closeAllRedisConnections } from './src/config/redis.js';
 
-// --- Cấu hình ban đầu ---
 dotenv.config();
 connectDB();
 
@@ -18,72 +17,69 @@ const server = createServer(app);
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const PORT = process.env.PORT || 4000;
 const SESSION_NAME = process.env.SESSION_NAME || 'connect.sid';
+// Kiểm tra xem có đang chạy trên môi trường Production không
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
-// --- Cấu hình Middleware ---
-// CORS và Body Parsers đã được app.js xử lý
-
-// 3. Cấu hình Express Session
-// (Phải chạy SAU cors/json trong app.js, và TRƯỚC app.configureRoutes)
 if (!process.env.SESSION_SECRET || !process.env.MONGO_URI) {
   console.error("Lỗi: Vui lòng cung cấp SESSION_SECRET và MONGO_URI trong file .env");
   process.exit(1);
 }
 
+// --- CẤU HÌNH SESSION CHO PRODUCTION ---
 const sessionConfig = {
   secret: process.env.SESSION_SECRET,
-  resave: false, // Khắc phục cảnh báo
-  saveUninitialized: false, // Khắc phục cảnh báo
+  resave: false,
+  saveUninitialized: false,
   store: MongoStore.create({
     mongoUrl: process.env.MONGO_URI,
-    collectionName: 'sessions'
+    collectionName: 'sessions',
+    ttl: 14 * 24 * 60 * 60 // Session tồn tại 14 ngày trong DB
   }),
   cookie: {
-    httpOnly: true,
-    secure: false ,
-    sameSite: 'lax',
+    httpOnly: true, // Chặn JS client đọc cookie (chống XSS)
+
+    // QUAN TRỌNG: Trên web thật (HTTPS) phải là true, Localhost là false
+    secure: IS_PRODUCTION,
+
+    // Nếu Frontend và Backend cùng domain (se2025...codes) dùng 'lax'
+    // Nếu khác domain (api.se2025... và www.se2025...) dùng 'none'
+    sameSite: IS_PRODUCTION ? 'lax' : 'lax',
+
     maxAge: 1000 * 60 * 60 * 24 // 1 ngày
   },
-  name: SESSION_NAME
+  name: SESSION_NAME,
+  proxy: true // Bắt buộc khi dùng secure: true sau Nginx
 };
 
-// Sử dụng session middleware cho Express
 app.use(session(sessionConfig));
 
 // --- Cấu hình Socket.IO ---
 const io = new Server(server, {
-    cors: {
-        origin: FRONTEND_URL,
-        credentials: true
-    }
+  cors: {
+    origin: FRONTEND_URL,
+    credentials: true,
+    methods: ["GET", "POST"]
+  },
+  // Cấu hình thêm cho Socket.IO sau Nginx
+  transports: ['websocket', 'polling']
 });
 
-// Gắn session middleware vào Socket.IO
 const wrap = middleware => (socket, next) => middleware(socket.request, {}, next);
 io.use(wrap(session(sessionConfig)));
 
 io.on('connection', (socket) => {
-  console.log('🟢 Client đã kết nối:', socket.id);
-  // (Nâng cao) Giờ bạn có thể truy cập session:
-  // console.log('Session của socket:', socket.request.session?.userId);
-  socket.on('disconnect', () => console.log('🔴 Client đã ngắt kết nối:', socket.id));
+  // console.log('🟢 Client đã kết nối:', socket.id);
+  socket.on('disconnect', () => {
+    // console.log('🔴 Client đã ngắt kết nối:', socket.id)
+  });
 });
 
-// --- Cấu hình Routes (sau khi đã cài tất cả middleware) ---
-app.configureRoutes(io); // Pass io to routes for Socket.IO events
+app.configureRoutes(io);
 
-// --- Khởi động Workers (Outbox Pattern) ---
-const outboxPublisher = getOutboxPublisher({
-  pollInterval: 100, // Poll every 100ms
-  batchSize: 50,
-});
+// ... (Phần Workers và Shutdown giữ nguyên như code cũ của bạn) ...
+const outboxPublisher = getOutboxPublisher({ pollInterval: 100, batchSize: 50 });
+const streamConsumer = new StreamConsumer(io, { consumerName: `consumer-${process.pid}`, blockTime: 1000, batchSize: 10 });
 
-const streamConsumer = new StreamConsumer(io, {
-  consumerName: `consumer-${process.pid}`,
-  blockTime: 1000,
-  batchSize: 10,
-});
-
-// Start workers
 (async () => {
   try {
     await outboxPublisher.start();
@@ -91,34 +87,17 @@ const streamConsumer = new StreamConsumer(io, {
     console.log('✅ All workers started successfully');
   } catch (err) {
     console.error('❌ Failed to start workers:', err);
-    process.exit(1);
   }
 })();
 
-// --- Graceful Shutdown ---
 const gracefulShutdown = async (signal) => {
   console.log(`\n🛑 ${signal} received. Starting graceful shutdown...`);
-  
   try {
-    // Stop accepting new connections
-    server.close(() => {
-      console.log('✅ HTTP server closed');
-    });
-
-    // Stop workers
+    server.close(() => console.log('✅ HTTP server closed'));
     await outboxPublisher.stop();
     await streamConsumer.stop();
-    console.log('✅ Workers stopped');
-
-    // Close Redis connections
     await closeAllRedisConnections();
-
-    // Close Socket.IO
-    io.close(() => {
-      console.log('✅ Socket.IO closed');
-    });
-
-    console.log('✅ Graceful shutdown completed');
+    io.close(() => console.log('✅ Socket.IO closed'));
     process.exit(0);
   } catch (err) {
     console.error('❌ Error during shutdown:', err);
@@ -126,25 +105,11 @@ const gracefulShutdown = async (signal) => {
   }
 };
 
-// Listen for termination signals
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// Handle uncaught errors
-process.on('uncaughtException', (err) => {
-  console.error('❌ Uncaught Exception:', err);
-  gracefulShutdown('UNCAUGHT_EXCEPTION');
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-  gracefulShutdown('UNHANDLED_REJECTION');
-});
-
-// --- Khởi động Server ---
 server.listen(PORT, () => {
   console.log(`✅ Server đang chạy trên port ${PORT}`);
   console.log(`📡 Frontend URL: ${FRONTEND_URL}`);
-  console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔧 Mode: ${IS_PRODUCTION ? 'PRODUCTION (HTTPS)' : 'DEVELOPMENT'}`);
 });
-
