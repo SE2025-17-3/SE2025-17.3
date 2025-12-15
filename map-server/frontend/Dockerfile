@@ -1,5 +1,5 @@
 # --- Stage 1: Build ---
-FROM node:18-alpine as build-stage
+FROM node:18-alpine AS build-stage
 
 WORKDIR /app
 
@@ -8,21 +8,26 @@ RUN npm ci
 
 COPY . .
 
-# Khai báo biến môi trường build-time (để Vite nhận diện)
+# Nhận biến môi trường Build-time (cho Vite)
 ARG VITE_RECAPTCHA_V2_SITE_KEY
 ENV VITE_RECAPTCHA_V2_SITE_KEY=$VITE_RECAPTCHA_V2_SITE_KEY
 
-# Build ra thư mục dist
+ARG VITE_GOOGLE_CLIENT_ID
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
+
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
 RUN npm run build
 
-# --- Stage 2: Serve bằng Nginx ---
+# --- Stage 2: Serve ---
 FROM nginx:alpine
 
-# Copy file build vào Nginx
+# Copy code đã build
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 
-# Copy file cấu hình Nginx (ta sẽ tạo ở bước sau)
-COPY ../nginx.conf /etc/nginx/conf.d/default.conf
+# Copy file config Nginx (Lấy từ thư mục frontend hiện tại)
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
