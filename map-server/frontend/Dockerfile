@@ -22,7 +22,7 @@ FROM nginx:alpine
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 
 # Copy file cấu hình Nginx (ta sẽ tạo ở bước sau)
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY ../nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 

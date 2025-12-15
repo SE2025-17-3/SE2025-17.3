@@ -13,25 +13,26 @@ services:
 
   # 2. Backend (Node.js)
   backend:
-    # Kéo image từ Docker Hub (biến DOCKER_USERNAME lấy từ file .env do GitHub Actions tạo)
     image: august0508/map-backend:latest
     container_name: map_backend
     restart: always
     depends_on:
       - redis
-    # Cấu hình biến môi trường
     environment:
       - PORT=4000
       - NODE_ENV=production
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      # IP Server của bạn (để CORS hoạt động đúng)
-      - FRONTEND_URL=http://136.112.99.88
-      # Các biến bí mật (inject từ file .env trên server)
+      # Cập nhật tên miền HTTPS
+      - FRONTEND_URL=https://se2025-17-3.codes
+      # Các biến này sẽ được lấy từ file .env do GitHub Actions tạo ra
       - MONGO_URI=${MONGO_URI}
       - DATABASE_URL=${DATABASE_URL}
       - SESSION_SECRET=${SESSION_SECRET}
       - RECAPTCHA_V2_SECRET_KEY=${RECAPTCHA_V2_SECRET_KEY}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - EMAIL_USERNAME=${EMAIL_USERNAME}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
     networks:
       - app-network
 
@@ -41,17 +42,21 @@ services:
     container_name: map_frontend
     restart: always
     ports:
-      - "80:80" # Chạy ở port 80 mặc định
+      - "80:80"
+      - "443:443" # Mở thêm port HTTPS
+    volumes:
+      # Mount chứng chỉ SSL từ máy chủ vào container (Chế độ chỉ đọc)
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      # Mount file cấu hình Nginx
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
     depends_on:
       - backend
     networks:
       - app-network
 
-# Khai báo volume để dữ liệu Redis không bị mất khi restart container
 volumes:
   redis_data:
 
-# Khai báo mạng nội bộ
 networks:
   app-network:
     driver: bridge

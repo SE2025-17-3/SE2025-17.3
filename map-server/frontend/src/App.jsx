@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
 import html2canvas from 'html2canvas';
 
 // Components
@@ -29,14 +28,14 @@ import { useTeam } from './context/TeamContext.jsx';
 import { getPixelDetail } from './services/pixelApi';
 
 // Config
-import { 
-  WORLD_BOUNDS, 
-  MIN_ZOOM_TO_SHOW_PIXELS, 
-  GRID_WIDTH, 
-  GRID_HEIGHT 
+import {
+  WORLD_BOUNDS,
+  MIN_ZOOM_TO_SHOW_PIXELS,
+  GRID_WIDTH,
+  GRID_HEIGHT
 } from './config/constants';
 
-// --- HÀM CHUYỂN ĐỔI GRID -> LATLNG (Cho chức năng đọc URL) ---
+// --- HÀM CHUYỂN ĐỔI GRID -> LATLNG ---
 const gridToLatLng = (gx, gy) => {
   const north = WORLD_BOUNDS.getNorth();
   const south = WORLD_BOUNDS.getSouth();
@@ -55,7 +54,7 @@ const gridToLatLng = (gx, gy) => {
   return [latCenter, lngCenter];
 };
 
-// --- COMPONENT XỬ LÝ URL (Mở link nhảy tới tọa độ) ---
+// --- COMPONENT XỬ LÝ URL ---
 const MapUrlHandler = () => {
   const map = useMap();
   const processedRef = useRef(false);
@@ -69,7 +68,7 @@ const MapUrlHandler = () => {
 
     if (gx && gy) {
       const center = gridToLatLng(Number(gx), Number(gy));
-      map.setView(center, 18, { animate: false }); 
+      map.setView(center, 18, { animate: false });
       processedRef.current = true;
     }
   }, [map]);
@@ -77,7 +76,7 @@ const MapUrlHandler = () => {
   return null;
 };
 
-// --- COMPONENT KHỞI TẠO MAP (Chống giật & Fit màn hình) ---
+// --- COMPONENT KHỞI TẠO MAP ---
 const MapInitializer = () => {
   const map = useMap();
   const initializedRef = useRef(false);
@@ -91,8 +90,7 @@ const MapInitializer = () => {
     const adjustMinZoom = () => {
       const targetZoom = map.getBoundsZoom(WORLD_BOUNDS, false);
       map.setMinZoom(targetZoom);
-      
-      // Chỉ fitBounds nếu URL KHÔNG có tọa độ
+
       if (!initializedRef.current && !hasCoords) {
         map.fitBounds(WORLD_BOUNDS, { animate: false });
       }
@@ -100,11 +98,10 @@ const MapInitializer = () => {
     };
 
     adjustMinZoom();
-    
-    // Khi resize chỉ cập nhật minZoom, KHÔNG gọi fitBounds lại để tránh giật
+
     map.on('resize', () => {
-       const targetZoom = map.getBoundsZoom(WORLD_BOUNDS, false);
-       map.setMinZoom(targetZoom);
+      const targetZoom = map.getBoundsZoom(WORLD_BOUNDS, false);
+      map.setMinZoom(targetZoom);
     });
 
     return () => {
@@ -147,43 +144,43 @@ const MapZoomController = ({ setCanPaint, onLoginRequired }) => {
 const AuthControls = () => {
   const { isLoggedIn, user, openAuthModal } = useAuth();
   return (
-    <div className="absolute top-4 right-4 z-[1200] auth-controls-ignore">
-      {isLoggedIn && user ? (
-        <Profile />
-      ) : (
-        <button
-          onClick={openAuthModal}
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md"
-        >
-          Đăng nhập
-        </button>
-      )}
-    </div>
+      <div className="absolute top-4 right-4 z-[1200] auth-controls-ignore">
+        {isLoggedIn && user ? (
+            <Profile />
+        ) : (
+            <button
+                onClick={openAuthModal}
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md"
+            >
+              Đăng nhập
+            </button>
+        )}
+      </div>
   );
 };
 
 // --- COMPONENT AUXILIARY BUTTONS ---
 const AuxiliaryButtons = ({ openLeaderboard, openTeamModal, currentTeam }) => {
   return (
-    <div className="absolute top-16 right-4 z-[1000] flex flex-col gap-3 items-end aux-buttons-ignore">
-      {currentTeam ? (
-        <TeamBadge onClick={openTeamModal} currentTeam={currentTeam} />
-      ) : (
+      <div className="absolute top-16 right-4 z-[1000] flex flex-col gap-3 items-end aux-buttons-ignore">
+        {currentTeam ? (
+            <TeamBadge onClick={openTeamModal} currentTeam={currentTeam} />
+        ) : (
+            <button
+                onClick={() => openTeamModal()}
+                className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-lg shadow-md transition-colors"
+            >
+              Mở Teams
+            </button>
+        )}
         <button
-          onClick={() => openTeamModal()}
-          className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-lg shadow-md transition-colors"
+            onClick={openLeaderboard}
+            className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-lg shadow-md transition-colors"
+            title="Open Leaderboard"
         >
-          Mở Teams
+          Leaderboard
         </button>
-      )}
-      <button
-        onClick={openLeaderboard}
-        className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-lg shadow-md transition-colors"
-        title="Open Leaderboard"
-      >
-        Leaderboard
-      </button>
-    </div>
+      </div>
   );
 };
 
@@ -204,11 +201,9 @@ const App = () => {
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [teamModalMode, setTeamModalMode] = useState('list');
   const [zoomWarning, setZoomWarning] = useState(null);
-
-  // --- LOGIC FAVORITES (Đã sửa để lưu theo User ID) ---
   const [favorites, setFavorites] = useState([]);
 
-  // Hàm lấy key lưu trữ: favorite_pixels_USERID
+  // Hàm lấy key lưu trữ Favorites
   const getStorageKey = () => {
     if (user && user._id) {
       return `favorite_pixels_${user._id}`;
@@ -216,7 +211,6 @@ const App = () => {
     return 'favorite_pixels_guest';
   };
 
-  // 1. Khi User thay đổi -> Load lại dữ liệu của user đó
   useEffect(() => {
     const key = getStorageKey();
     try {
@@ -229,28 +223,23 @@ const App = () => {
     } catch {
       setFavorites([]);
     }
-  }, [user]); // Chạy lại khi user thay đổi (đăng nhập/đăng xuất)
+  }, [user]);
 
-  // 2. Khi danh sách Favorites thay đổi -> Lưu vào localStorage của user đó
   useEffect(() => {
     const key = getStorageKey();
     localStorage.setItem(key, JSON.stringify(favorites));
   }, [favorites, user]);
 
-  // ----------------------------------------------------
-
   const handlePixelClickForInfo = async (coords) => {
-    // 1. Hiển thị loading ngay lập tức
-    setPixelInfo({ 
-      gx: coords.gx, 
-      gy: coords.gy, 
-      color: '#FFFFFF', 
-      user: 'Loading...' 
+    setPixelInfo({
+      gx: coords.gx,
+      gy: coords.gy,
+      color: '#FFFFFF',
+      user: 'Loading...'
     });
     setIsPixelInfoModalOpen(true);
 
     try {
-      // 2. Gọi API lấy chi tiết User/Team
       const detail = await getPixelDetail(coords.gx, coords.gy);
       setPixelInfo(detail);
     } catch (error) {
@@ -269,9 +258,9 @@ const App = () => {
   const handleToggleFavorite = (gx, gy) => {
     const key = `${gx}:${gy}`;
     setFavorites((prev) =>
-      prev.some((p) => `${p.gx}:${p.gy}` === key)
-        ? prev.filter((p) => `${p.gx}:${p.gy}` !== key)
-        : [...prev, { gx, gy }]
+        prev.some((p) => `${p.gx}:${p.gy}` === key)
+            ? prev.filter((p) => `${p.gx}:${p.gy}` !== key)
+            : [...prev, { gx, gy }]
     );
   };
 
@@ -317,110 +306,108 @@ const App = () => {
   const handleShowZoomWarning = () => setZoomWarning("Bạn cần phóng to (Zoom in) để chọn Pixel.");
 
   return (
-    <div style={{ position: 'relative', height: '100vh', width: '100vw' }}>
-      {isAuthModalOpen && <AuthModal onClose={closeAuthModal} />}
-      {isVerificationRequired && <VerificationModal />}
-      
-      {zoomWarning && (
-        <ZoomWarningToast 
-          message={zoomWarning} 
-          onClose={() => setZoomWarning(null)} 
+      <div style={{ position: 'relative', height: '100vh', width: '100vw' }}>
+        {isAuthModalOpen && <AuthModal onClose={closeAuthModal} />}
+        {isVerificationRequired && <VerificationModal />}
+
+        {zoomWarning && (
+            <ZoomWarningToast
+                message={zoomWarning}
+                onClose={() => setZoomWarning(null)}
+            />
+        )}
+
+        {isPixelInfoModalOpen && (
+            <PixelInfoModal
+                pixel={pixelInfo}
+                onClose={() => setIsPixelInfoModalOpen(false)}
+                onStartMultiPaint={handleStartMultiPaint}
+                onToggleFavorite={handleToggleFavorite}
+                isFavorite={favorites.some((p) => p.gx === pixelInfo?.gx && p.gy === pixelInfo?.gy)}
+                onShare={handleShare}
+            />
+        )}
+
+        {shareData && <ShareModal data={shareData} onClose={() => setShareData(null)} />}
+
+        {isLeaderboardOpen && (
+            <Leaderboard isOpen={isLeaderboardOpen} onClose={() => setIsLeaderboardOpen(false)} />
+        )}
+
+        {isTeamModalOpen && (
+            <TeamModal
+                isOpen={isTeamModalOpen}
+                onClose={() => setIsTeamModalOpen(false)}
+                mode={teamModalMode}
+            />
+        )}
+
+        {/* VÙNG BẢN ĐỒ */}
+        <div id="map-capture-area" style={{ width: '100%', height: '100%' }}>
+          <MapContainer
+              center={[0, 0]}
+              zoom={2}
+              maxZoom={20}
+              zoomSnap={0}
+              zoomDelta={1}
+              style={{ height: '100%', width: '100%', background: '#AAD3DF' }}
+              maxBounds={[[-85.05112878, -Infinity], [85.05112878, Infinity]]}
+              maxBoundsViscosity={1.0}
+              worldCopyJump={true}
+              inertia={true}
+              preferCanvas={true}
+          >
+            <TileLayer
+                noWrap={false}
+                url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+                attribution='&copy; Google Maps'
+            />
+
+            <MapUrlHandler />
+            <MapInitializer />
+            <LocationButton />
+
+            <MapZoomController setCanPaint={setCanPaint} onLoginRequired={openAuthModal} />
+
+            <GlobalCanvasGrid
+                onLoginRequired={openAuthModal}
+                selectedPixelColor={selectedPixelColor}
+                pendingPixels={pendingPixels}
+                setPendingPixels={setPendingPixels}
+                onPixelClickForInfo={handlePixelClickForInfo}
+                pixelInfo={pixelInfo}
+                favorites={favorites}
+                canPaint={canPaint}
+                onZoomWarning={handleShowZoomWarning}
+                isPaletteVisible={isPaletteVisible}
+            />
+
+            <FavoriteMarkers favorites={favorites} onMarkerClick={handlePixelClickForInfo} />
+          </MapContainer>
+        </div>
+
+        <AuthControls />
+
+        <AuxiliaryButtons
+            openLeaderboard={openLeaderboard}
+            openTeamModal={openTeamModalDetails}
+            currentTeam={currentTeam}
         />
-      )}
 
-      {isPixelInfoModalOpen && (
-        <PixelInfoModal
-          pixel={pixelInfo}
-          onClose={() => setIsPixelInfoModalOpen(false)}
-          onStartMultiPaint={handleStartMultiPaint}
-          onToggleFavorite={handleToggleFavorite}
-          isFavorite={favorites.some((p) => p.gx === pixelInfo?.gx && p.gy === pixelInfo?.gy)}
-          onShare={handleShare}
-        />
-      )}
-
-      {shareData && <ShareModal data={shareData} onClose={() => setShareData(null)} />}
-
-      {isLeaderboardOpen && (
-        <Leaderboard isOpen={isLeaderboardOpen} onClose={() => setIsLeaderboardOpen(false)} />
-      )}
-
-      {isTeamModalOpen && (
-        <TeamModal
-          isOpen={isTeamModalOpen}
-          onClose={() => setIsTeamModalOpen(false)}
-          mode={teamModalMode}
-        />
-      )}
-
-      {/* VÙNG BẢN ĐỒ */}
-      <div id="map-capture-area" style={{ width: '100%', height: '100%' }}>
-        <MapContainer
-          center={[0, 0]}
-          zoom={2}
-          maxZoom={20}
-          zoomSnap={0}
-          zoomDelta={1}
-          style={{ height: '100%', width: '100%', background: '#AAD3DF' }}
-          
-          // Cấu hình Map (Chặn kéo vuốt lỗi)
-          maxBounds={[[-85.05112878, -Infinity], [85.05112878, Infinity]]}
-          maxBoundsViscosity={1.0}
-          worldCopyJump={true}
-          inertia={true}
-          preferCanvas={true}
-        >
-          <TileLayer
-            noWrap={false}
-            url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
-            attribution='&copy; Google Maps'
-          />
-
-          <MapUrlHandler /> 
-          <MapInitializer />
-          <LocationButton /> {/* Nút định vị */}
-
-          <MapZoomController setCanPaint={setCanPaint} onLoginRequired={openAuthModal} />
-
-          <GlobalCanvasGrid
-            onLoginRequired={openAuthModal}
-            selectedPixelColor={selectedPixelColor}
-            pendingPixels={pendingPixels}
-            setPendingPixels={setPendingPixels}
-            onPixelClickForInfo={handlePixelClickForInfo}
-            pixelInfo={pixelInfo}
-            favorites={favorites}
-            canPaint={canPaint}
-            onZoomWarning={handleShowZoomWarning}
-            isPaletteVisible={isPaletteVisible} 
-          />
-
-          <FavoriteMarkers favorites={favorites} onMarkerClick={handlePixelClickForInfo} />
-        </MapContainer>
+        {(!isPixelInfoModalOpen || isPaletteVisible) && (
+            <PaintControls
+                selectedPixelColor={selectedPixelColor}
+                setSelectedPixelColor={setSelectedPixelColor}
+                pendingPixels={pendingPixels}
+                setPendingPixels={setPendingPixels}
+                onLoginRequired={openAuthModal}
+                isPaletteVisible={isPaletteVisible}
+                setIsPaletteVisible={setIsPaletteVisible}
+                canPaint={canPaint}
+                isPixelInfoModalOpen={isPixelInfoModalOpen}
+            />
+        )}
       </div>
-
-      <AuthControls />
-
-      <AuxiliaryButtons
-        openLeaderboard={openLeaderboard}
-        openTeamModal={openTeamModalDetails}
-        currentTeam={currentTeam}
-      />
-
-      {(!isPixelInfoModalOpen || isPaletteVisible) && (
-        <PaintControls
-          selectedPixelColor={selectedPixelColor}
-          setSelectedPixelColor={setSelectedPixelColor}
-          pendingPixels={pendingPixels}
-          setPendingPixels={setPendingPixels}
-          onLoginRequired={openAuthModal}
-          isPaletteVisible={isPaletteVisible}
-          setIsPaletteVisible={setIsPaletteVisible}
-          canPaint={canPaint}
-          isPixelInfoModalOpen={isPixelInfoModalOpen}
-        />
-      )}
-    </div>
   );
 };
 

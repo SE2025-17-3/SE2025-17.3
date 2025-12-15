@@ -16,8 +16,9 @@ model User {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   username  String   @unique
   email     String   @unique
-  password  String
-  teamId    String?  @db.ObjectId 
+  password  String?
+  googleId  String?  @unique
+  teamId    String?  @db.ObjectId
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -25,17 +26,19 @@ model User {
   team      Team?    @relation(fields: [teamId], references: [id])
   pixels    Pixel[]
 
-  @@index([teamId]) 
+  @@index([teamId])
   @@map("users")
 }
 
-// Team Model 
+// Team Model
 model Team {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   name        String   @unique
   createdBy   String   @db.ObjectId
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
 
   // Relations
   members     User[]   // 1 Team → many Users
@@ -53,10 +56,10 @@ model Pixel {
   color     String   @default("#FFFFFF")
   userId    String?  @db.ObjectId
   updatedAt DateTime @updatedAt
-  
+
   // Relations
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  
+
   @@unique([gx, gy])
   @@index([userId])
   @@index([updatedAt])
@@ -68,7 +71,7 @@ model Session {
   id      String   @id @default(auto()) @map("_id") @db.ObjectId
   expires DateTime
   session Json
-  
+
   @@map("sessions")
 }
 
@@ -81,7 +84,7 @@ model PixelEvent {
   userId    String?  @db.ObjectId
   teamId    String?  @db.ObjectId
   createdAt DateTime @default(now())
-  
+
   @@index([createdAt])
   @@index([userId, createdAt])
   @@index([teamId, createdAt])
