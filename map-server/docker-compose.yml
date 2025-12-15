@@ -23,13 +23,16 @@ services:
       - NODE_ENV=production
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      # QUAN TRỌNG: Đổi sang HTTPS và tên miền
       - FRONTEND_URL=https://se2025-17-3.codes
-      # Các biến môi trường khác
+      # Các biến từ .env
       - MONGO_URI=${MONGO_URI}
       - DATABASE_URL=${DATABASE_URL}
       - SESSION_SECRET=${SESSION_SECRET}
       - RECAPTCHA_V2_SECRET_KEY=${RECAPTCHA_V2_SECRET_KEY}
+      # --- ĐÃ THÊM LẠI CÁC BIẾN CÒN THIẾU ---
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - EMAIL_USERNAME=${EMAIL_USERNAME}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
     networks:
       - app-network
 
@@ -40,13 +43,14 @@ services:
     restart: always
     ports:
       - "80:80"
-      - "443:443" # <--- THÊM: Mở cổng HTTPS
+      - "443:443"
     volumes:
-      # <--- THÊM: Mount chứng chỉ từ máy chủ vào container (Chế độ chỉ đọc)
+      # Chỉ giữ lại mount SSL
       - /etc/letsencrypt:/etc/letsencrypt:ro
-      # <--- THÊM: Mount file nginx.conf nằm cùng thư mục docker-compose vào container
-      # Lưu ý: Nếu file config của bạn chỉ chứa khối 'server', hãy map vào /etc/nginx/conf.d/default.conf
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+
+      # --- ĐÃ XÓA DÒNG MOUNT NGINX.CONF ---
+      # (Vì file cấu hình đã nằm sẵn trong Image rồi)
+
     depends_on:
       - backend
     networks:
