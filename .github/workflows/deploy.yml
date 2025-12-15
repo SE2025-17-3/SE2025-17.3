@@ -59,7 +59,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "/map-server/docker-compose.prod.yml"
+          source: "map-server/docker-compose.prod.yml"
           target: "/home/${{ secrets.SSH_USER }}/deploy/"
 
       - name: SSH and Deploy
@@ -88,3 +88,4 @@ jobs:
             docker compose up -d
 
             docker image prune -f
+
