@@ -1,4 +1,4 @@
-// backend/src/routes/userRoutes.js
+// D:\Code\SE2025-17.3\map-server\backend\src\routes\userRoutes.js
 
 import express from 'express';
 import { protect } from '../middleware/authMiddleware.js';

@@ -1,7 +1,100 @@
+/* D:\Code\SE2025-17.3\map-server\frontend\src\index.css */
+
 body {
   margin: 0;
   padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
+}
+
+/* --- THÊM PHẦN NÀY CHO HIỆU ỨNG THÔNG BÁO --- */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-down {
+  animation: fadeInDown 0.3s ease-out forwards;
+}
+
+/* Style cho icon ngôi sao favorite */
+.leaflet-div-icon.custom-star-icon {
+  background: transparent;
+  border: none;
+}
+
+.custom-star-icon svg {
+  width: 100%;
+  height: 100%;
+  /* Hiệu ứng nhấp nháy nhẹ nếu muốn nổi bật hơn */
+  animation: pulse-star 2s infinite; 
+}
+
+@keyframes pulse-star {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* Tối ưu hóa hiệu năng render bản đồ */
+.leaflet-container {
+  /* Giúp cuộn mượt hơn trên một số trình duyệt */
+  touch-action: none; 
+}
+
+.leaflet-layer,
+.leaflet-pane {
+  /* Ép trình duyệt sử dụng GPU để render các lớp bản đồ */
+  will-change: transform; 
+}
+
+/* Canvas của chúng ta cũng cần mượt */
+canvas {
+  will-change: transform;
+}
+
+/* Hiệu ứng chấm xanh định vị */
+.user-location-marker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-location-dot {
+  width: 16px;
+  height: 16px;
+  background-color: #3b82f6; /* Màu xanh dương */
+  border: 2px solid white;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0,0,0,0.3);
+  z-index: 2;
+}
+
+.user-location-pulse {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  background-color: rgba(59, 130, 246, 0.4);
+  border-radius: 50%;
+  animation: pulse-ring 2s infinite;
+  z-index: 1;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
 }

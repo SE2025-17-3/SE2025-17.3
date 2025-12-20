@@ -1,10 +1,9 @@
-// backend/src/controllers/userController.js
 import User from '../models/User.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { calculateEnergy } from './authController.js'; // Import hàm tính năng lượng
 
-// --- Cấu hình Multer để upload ảnh ---
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const uploadPath = 'public/avatars';
@@ -30,10 +29,12 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024 } });
 export const uploadUserAvatar = upload.single('avatar');
 
-// --- Các hàm Controller ---
 export const getUserProfile = async (req, res) => {
     const user = await User.findById(req.user._id);
     if (user) {
+        // Cập nhật năng lượng mới nhất trước khi trả về
+        await calculateEnergy(user);
+
         res.json({
             _id: user._id,
             username: user.username,
@@ -41,6 +42,9 @@ export const getUserProfile = async (req, res) => {
             displayName: user.displayName,
             avatarUrl: user.avatarUrl,
             teamId: user.teamId || null,
+            energy: user.energy,
+            maxEnergy: user.maxEnergy || 64,
+            lastEnergyUpdate: user.lastEnergyUpdate
         });
     } else {
         res.status(404).json({ message: 'Không tìm thấy người dùng' });
@@ -48,8 +52,6 @@ export const getUserProfile = async (req, res) => {
 };
 
 export const updateUserProfile = async (req, res) => {
-    console.log('Backend received data:', { body: req.body, file: req.file });
-
     try {
         const user = await User.findById(req.user._id);
         if (user) {
@@ -62,6 +64,8 @@ export const updateUserProfile = async (req, res) => {
                 user.avatarUrl = `/avatars/${req.file.filename}`;
             }
             const updatedUser = await user.save();
+            
+            // Trả về cả info năng lượng
             res.json({
                 _id: updatedUser._id,
                 username: updatedUser.username,
@@ -69,6 +73,9 @@ export const updateUserProfile = async (req, res) => {
                 displayName: updatedUser.displayName,
                 avatarUrl: updatedUser.avatarUrl,
                 teamId: updatedUser.teamId || null,
+                energy: updatedUser.energy,
+                maxEnergy: updatedUser.maxEnergy,
+                lastEnergyUpdate: updatedUser.lastEnergyUpdate
             });
         } else {
             res.status(404).json({ message: 'Không tìm thấy người dùng' });

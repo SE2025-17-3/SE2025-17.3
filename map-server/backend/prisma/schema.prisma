@@ -1,3 +1,4 @@
+// D:\Code\SE2025-17.3\map-server\backend\prisma\schema.prisma
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -15,30 +16,32 @@ model User {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   username  String   @unique
   email     String   @unique
-  password  String
+  password  String?
+  googleId  String?  @unique
   teamId    String?  @db.ObjectId
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  team   Team?   @relation(fields: [teamId], references: [id])
-  pixels Pixel[]
+  team      Team?    @relation(fields: [teamId], references: [id])
+  pixels    Pixel[]
 
   @@index([teamId])
   @@map("users")
 }
 
-// Team Model 
+// Team Model
 model Team {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   name        String   @unique
   createdBy   String   @db.ObjectId
-  memberCount Int      @default(1)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
 
   // Relations
-  members User[] // 1 Team → many Users
+  members     User[]   // 1 Team → many Users
 
   @@index([createdBy])
   @@index([createdAt])
@@ -55,7 +58,7 @@ model Pixel {
   updatedAt DateTime @updatedAt
 
   // Relations
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@unique([gx, gy])
   @@index([userId])
