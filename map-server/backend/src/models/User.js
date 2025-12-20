@@ -68,6 +68,17 @@ const userSchema = new mongoose.Schema({
   // --- QUÊN MẬT KHẨU ---
   resetPasswordToken: String,
   resetPasswordExpire: Date,
+
+  // --- CHALLENGE SYSTEM ---
+  challengePoints: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+  badges: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Badge',
+  }],
 }, { timestamps: true });
 
 // Middleware mã hóa mật khẩu trước khi lưu

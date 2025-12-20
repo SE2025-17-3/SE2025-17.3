@@ -69,6 +69,14 @@ io.use(wrap(session(sessionConfig)));
 
 io.on('connection', (socket) => {
   // console.log('🟢 Client đã kết nối:', socket.id);
+  
+  // Join user to their personal room for targeted notifications
+  const userId = socket.request.session?.userId;
+  if (userId) {
+    socket.join(`user:${userId}`);
+    console.log(`👤 User ${userId} joined personal room`);
+  }
+  
   socket.on('disconnect', () => {
     // console.log('🔴 Client đã ngắt kết nối:', socket.id)
   });

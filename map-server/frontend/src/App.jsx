@@ -20,6 +20,8 @@ import TeamBadge from './components/TeamBadge.jsx';
 import ZoomWarningToast from './components/ZoomWarningToast.jsx';
 import FavoriteMarkers from './components/FavoriteMarkers.jsx';
 import LocationButton from './components/LocationButton.jsx';
+import ChallengePanel from './components/ChallengePanel.jsx';
+import Store from './components/Store.jsx';
 
 // Services & Contexts
 import { useAuth } from './context/AuthContext.jsx';
@@ -160,7 +162,7 @@ const AuthControls = () => {
 };
 
 // --- COMPONENT AUXILIARY BUTTONS ---
-const AuxiliaryButtons = ({ openLeaderboard, openTeamModal, currentTeam }) => {
+const AuxiliaryButtons = ({ openLeaderboard, openTeamModal, currentTeam, openStore }) => {
   return (
       <div className="absolute top-16 right-4 z-[1000] flex flex-col gap-3 items-end aux-buttons-ignore">
         {currentTeam ? (
@@ -179,6 +181,14 @@ const AuxiliaryButtons = ({ openLeaderboard, openTeamModal, currentTeam }) => {
             title="Open Leaderboard"
         >
           Leaderboard
+        </button>
+        <button
+            onClick={openStore}
+            className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold rounded-lg shadow-md transition-all flex items-center gap-2"
+            title="Open Droplet Store"
+        >
+          <span className="text-xl">💧</span>
+          Store
         </button>
       </div>
   );
@@ -202,6 +212,7 @@ const App = () => {
   const [teamModalMode, setTeamModalMode] = useState('list');
   const [zoomWarning, setZoomWarning] = useState(null);
   const [favorites, setFavorites] = useState([]);
+  const [isStoreOpen, setIsStoreOpen] = useState(false);
 
   // Hàm lấy key lưu trữ Favorites
   const getStorageKey = () => {
@@ -392,7 +403,10 @@ const App = () => {
             openLeaderboard={openLeaderboard}
             openTeamModal={openTeamModalDetails}
             currentTeam={currentTeam}
+            openStore={() => setIsStoreOpen(true)}
         />
+
+        <ChallengePanel />
 
         {(!isPixelInfoModalOpen || isPaletteVisible) && (
             <PaintControls
@@ -407,6 +421,8 @@ const App = () => {
                 isPixelInfoModalOpen={isPixelInfoModalOpen}
             />
         )}
+
+        <Store isOpen={isStoreOpen} onClose={() => setIsStoreOpen(false)} />
       </div>
   );
 };
