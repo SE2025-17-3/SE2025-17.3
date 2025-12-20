@@ -9,9 +9,13 @@ import app from './src/app.js';
 import { getOutboxPublisher } from './src/workers/outboxPublisher.js';
 import StreamConsumer from './src/workers/streamConsumer.js';
 import { closeAllRedisConnections } from './src/config/redis.js';
+import { initializeStripe } from './src/config/stripe.js';
 
 dotenv.config();
 connectDB();
+
+// Initialize Stripe
+initializeStripe();
 
 const server = createServer(app);
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -81,6 +85,9 @@ io.on('connection', (socket) => {
     // console.log('🔴 Client đã ngắt kết nối:', socket.id)
   });
 });
+
+// Set io instance in app so it's accessible in routes (e.g., payment webhook)
+app.set('io', io);
 
 app.configureRoutes(io);
 

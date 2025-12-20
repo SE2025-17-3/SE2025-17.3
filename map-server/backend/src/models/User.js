@@ -79,6 +79,13 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Badge',
   }],
+
+  // --- PAYMENT SYSTEM ---
+  stripeCustomerId: {
+    type: String,
+    sparse: true,
+    index: true,
+  },
 }, { timestamps: true });
 
 // Middleware mã hóa mật khẩu trước khi lưu
