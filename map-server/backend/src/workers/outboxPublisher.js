@@ -1,7 +1,5 @@
-// D:\Code\SE2025-17.3\map-server\backend\src\workers\outboxPublisher.js
-
 import Outbox from '../models/Outbox.js';
-import { getPublisher, STREAMS } from '../config/redis.js';
+import { getPublisher, STREAMS, isRedisEnabled } from '../config/redis.js';
 
 /**
  * Outbox Publisher Worker
@@ -15,12 +13,18 @@ class OutboxPublisher {
     this.isRunning = false;
     this.pollTimer = null;
     this.redis = null;
+    this.enabled = isRedisEnabled();
   }
 
   /**
    * Start the worker
    */
   async start() {
+    if (!this.enabled) {
+      console.log('⏭️ Outbox publisher disabled (Redis not enabled)');
+      return;
+    }
+
     if (this.isRunning) {
       console.warn('⚠️ Outbox publisher is already running');
       return;

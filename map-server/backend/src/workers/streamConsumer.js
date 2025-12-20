@@ -1,6 +1,4 @@
-// D:\Code\SE2025-17.3\map-server\backend\src\workers\streamConsumer.js
-
-import { getSubscriber, STREAMS, CONSUMER_GROUPS } from '../config/redis.js';
+import { getSubscriber, STREAMS, CONSUMER_GROUPS, isRedisEnabled } from '../config/redis.js';
 
 /**
  * Redis Stream Consumer
@@ -15,6 +13,7 @@ class StreamConsumer {
     this.batchSize = options.batchSize || 10;
     this.isRunning = false;
     this.redis = null;
+    this.enabled = isRedisEnabled();
   }
 
   /**
@@ -43,6 +42,11 @@ class StreamConsumer {
    * Start consuming messages
    */
   async start() {
+    if (!this.enabled) {
+      console.log('⏭️ Stream consumer disabled (Redis not enabled)');
+      return;
+    }
+
     if (this.isRunning) {
       console.warn('⚠️ Stream consumer is already running');
       return;
