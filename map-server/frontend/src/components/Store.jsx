@@ -4,6 +4,9 @@ import './Store.css';
 import { useWallet } from '../context/WalletContext';
 import { useAuth } from '../context/AuthContext';
 import * as storeApi from '../services/storeApi';
+import PackageSelector from './PackageSelector';
+import Checkout from './Checkout';
+import PaymentSuccess from './PaymentSuccess';
 
 const Store = ({ isOpen, onClose }) => {
   const { wallet, refreshWallet } = useWallet();
@@ -14,6 +17,20 @@ const Store = ({ isOpen, onClose }) => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [quantities, setQuantities] = useState({});
   const [purchasing, setPurchasing] = useState({});
+  
+  // Payment flow states
+  const [selectedPackage, setSelectedPackage] = useState(null);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
+
+  // Check for payment success on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('payment_success') === 'true' || urlParams.get('payment_intent')) {
+      setShowPaymentSuccess(true);
+      setSelectedCategory('buy_droplets');
+    }
+  }, [isOpen]);
 
   // Fetch store items
   useEffect(() => {
@@ -87,6 +104,29 @@ const Store = ({ isOpen, onClose }) => {
     }
   };
 
+  const handlePackageSelect = (pkg) => {
+    setSelectedPackage(pkg);
+    setShowCheckout(true);
+  };
+
+  const handlePaymentSuccess = async () => {
+    setShowCheckout(false);
+    setSelectedPackage(null);
+    await refreshWallet();
+    alert('✅ Payment successful! Your droplets have been added to your account.');
+  };
+
+  const handlePaymentCancel = () => {
+    setShowCheckout(false);
+    setSelectedPackage(null);
+  };
+
+  const handlePaymentSuccessClose = () => {
+    setShowPaymentSuccess(false);
+    // Clear URL params
+    window.history.replaceState({}, document.title, window.location.pathname);
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -124,18 +164,41 @@ const Store = ({ isOpen, onClose }) => {
             >
               📦 Capacity Upgrades
             </button>
+            <button
+              className={`store-tab ${selectedCategory === 'buy_droplets' ? 'active' : ''}`}
+              onClick={() => setSelectedCategory('buy_droplets')}
+            >
+              💰 Buy Droplets
+            </button>
           </div>
 
-          {loading && <div className="store-loading">Loading items...</div>}
-          {error && <div className="store-error">{error}</div>}
+          {selectedCategory === 'buy_droplets' ? (
+            showPaymentSuccess ? (
+              <PaymentSuccess onClose={handlePaymentSuccessClose} />
+            ) : showCheckout && selectedPackage ? (
+              <Checkout
+                packageData={selectedPackage}
+                onSuccess={handlePaymentSuccess}
+                onCancel={handlePaymentCancel}
+              />
+            ) : (
+              <PackageSelector
+                onSelectPackage={handlePackageSelect}
+                selectedPackageId={selectedPackage?.id}
+              />
+            )
+          ) : (
+            <>
+              {loading && <div className="store-loading">Loading items...</div>}
+              {error && <div className="store-error">{error}</div>}
 
-          {!loading && !error && (
-            <div className="store-items-grid">
-              {items.map(item => {
-                const quantity = quantities[item.itemId] || 1;
-                const totalCost = item.price * quantity;
-                const canAfford = wallet.droplets >= totalCost;
-                const isPurchasing = purchasing[item.itemId];
+              {!loading && !error && (
+                <div className="store-items-grid">
+                  {items.map(item => {
+                    const quantity = quantities[item.itemId] || 1;
+                    const totalCost = item.price * quantity;
+                    const canAfford = wallet.droplets >= totalCost;
+                    const isPurchasing = purchasing[item.itemId];
 
                 return (
                   <div key={item.itemId} className="store-item-card">
@@ -189,6 +252,8 @@ const Store = ({ isOpen, onClose }) => {
                 );
               })}
             </div>
+          )}
+            </>
           )}
         </div>
       </div>
