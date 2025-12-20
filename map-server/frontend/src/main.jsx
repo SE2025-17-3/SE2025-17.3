@@ -13,6 +13,8 @@ import { SocketProvider } from './context/SocketContext.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { TeamProvider } from './context/TeamContext.jsx';
 import { VerificationProvider } from './context/VerificationContext.jsx';
+import { ChallengeProvider } from './context/ChallengeContext.jsx';
+import { WalletProvider } from './context/WalletContext.jsx';
 
 // Lấy Key từ biến môi trường
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_V2_SITE_KEY;
@@ -26,13 +28,17 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         {/* 2. BỌC ỨNG DỤNG BẰNG GOOGLE PROVIDER */}
         <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
             <AuthProvider>
-                <TeamProvider>
-                    <VerificationProvider>
-                        <SocketProvider>
-                            <App />
-                        </SocketProvider>
-                    </VerificationProvider>
-                </TeamProvider>
+                <WalletProvider>
+                    <TeamProvider>
+                        <VerificationProvider>
+                            <SocketProvider>
+                                <ChallengeProvider>
+                                    <App />
+                                </ChallengeProvider>
+                            </SocketProvider>
+                        </VerificationProvider>
+                    </TeamProvider>
+                </WalletProvider>
             </AuthProvider>
         </GoogleOAuthProvider>
     </React.StrictMode>,

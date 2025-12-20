@@ -5,6 +5,7 @@ import Outbox from '../models/Outbox.js';
 import User from '../models/User.js';
 import { calculateEnergy } from './authController.js';
 import { getRedisClient, isRedisEnabled } from '../config/redis.js';
+import * as challengeService from '../services/challengeService.js';
 
 const CHUNK_SIZE = 256;
 
@@ -153,6 +154,14 @@ export const addPixel = async (req, res, io) => {
     const redis = getRedisClient();
     if (redis) {
       await redis.del(cacheKey);
+    }
+
+    // Track challenge progress
+    try {
+      await challengeService.updateStreak(userId, io);
+      await challengeService.trackPixelAction(userId, { gx, gy, color }, io);
+    } catch (challengeErr) {
+      console.warn('⚠️ Challenge tracking error:', challengeErr?.message);
     }
 
     // Response with user energy

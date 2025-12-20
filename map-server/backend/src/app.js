@@ -11,6 +11,9 @@ import userRoutes from './routes/userRoutes.js';
 import leaderboardRoutes from './routes/leaderboardRoutes.js';
 import statsRoutes from './routes/statsRoutes.js';
 import teamRoutes from './routes/teamRoutes.js';
+import challengeRoutes from './routes/challengeRoutes.js';
+import walletRoutes from './routes/walletRoutes.js';
+import storeRoutes from './routes/storeRoutes.js';
 
 const app = express();
 // Lấy URL từ biến môi trường, fallback về localhost nếu chạy local
@@ -50,6 +53,9 @@ app.configureRoutes = (io) => {
   app.use('/api/leaderboard', leaderboardRoutes);
   app.use('/api/stats', statsRoutes);
   app.use('/api/teams', teamRoutes);
+  app.use('/api/challenges', challengeRoutes);
+  app.use('/api/wallet', walletRoutes);
+  app.use('/api/store', storeRoutes);
 
   app.use(/\/api\/.*/, (req, res) => {
     res.status(404).json({ message: `API endpoint không tồn tại: ${req.originalUrl}` });
