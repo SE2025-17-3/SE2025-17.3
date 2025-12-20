@@ -4,7 +4,7 @@ import PixelEvent from '../models/PixelEvent.js';
 import Outbox from '../models/Outbox.js';
 import User from '../models/User.js';
 import { calculateEnergy } from './authController.js';
-import { redis } from '../config/redis.js';
+import { getRedisClient, isRedisEnabled } from '../config/redis.js';
 
 const CHUNK_SIZE = 256;
 
@@ -26,10 +26,13 @@ export const getChunk = async (req, res) => {
     // Redis cache key
     const cacheKey = `chunk:${chunkX}:${chunkY}`;
 
-    // Try Redis cache first
-    const cachedData = await redis.get(cacheKey);
-    if (cachedData) {
-      return res.json(JSON.parse(cachedData));
+    // Try Redis cache first (if enabled)
+    const redis = getRedisClient();
+    if (redis) {
+      const cachedData = await redis.get(cacheKey);
+      if (cachedData) {
+        return res.json(JSON.parse(cachedData));
+      }
     }
 
     // Query MongoDB
@@ -44,8 +47,10 @@ export const getChunk = async (req, res) => {
     }).select('gx gy color userId -_id').lean();
 
     // Cache in Redis (1 hour for non-empty, 5 min for empty)
-    const ttl = pixels.length > 0 ? 3600 : 300;
-    await redis.set(cacheKey, JSON.stringify(pixels), 'EX', ttl);
+    if (redis) {
+      const ttl = pixels.length > 0 ? 3600 : 300;
+      await redis.set(cacheKey, JSON.stringify(pixels), 'EX', ttl);
+    }
 
     res.json(pixels);
   } catch (err) {
@@ -145,7 +150,10 @@ export const addPixel = async (req, res, io) => {
     const chunkX = Math.floor(gx / CHUNK_SIZE);
     const chunkY = Math.floor(gy / CHUNK_SIZE);
     const cacheKey = `chunk:${chunkX}:${chunkY}`;
-    await redis.del(cacheKey);
+    const redis = getRedisClient();
+    if (redis) {
+      await redis.del(cacheKey);
+    }
 
     // Response with user energy
     res.status(201).json({ 
