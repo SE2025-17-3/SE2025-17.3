@@ -1,4 +1,4 @@
-// frontend/src/context/AuthContext.jsx
+// D:\Code\SE2025-17.3\map-server\frontend\src\context\AuthContext.jsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import api from '../services/api'; // Import axios instance
 
@@ -18,24 +18,8 @@ export const AuthProvider = ({ children }) => {
   const openAuthModal = () => setIsAuthModalOpen(true);
   const closeAuthModal = () => setIsAuthModalOpen(false);
 
-  const checkAuthStatus = async () => {
-    try {
-      setLoading(true);
-      const { data } = await api.get('/users/me');
-      setUser(data);
-      setIsLoggedIn(true);
-    } catch (error) {
-      setUser(null);
-      setIsLoggedIn(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // useEffect để kiểm tra trạng thái đăng nhập khi app khởi động
   useEffect(() => {
-    // Biến cờ này giúp ngăn việc cập nhật state trên component đã bị unmount
-    // rất hữu ích để tránh lỗi trong React 18 Strict Mode
     let isMounted = true;
 
     const checkAuthStatus = async () => {
@@ -59,28 +43,39 @@ export const AuthProvider = ({ children }) => {
 
     checkAuthStatus();
 
-    // Cleanup function để ngăn memory leak
     return () => {
       isMounted = false;
     };
-  }, []); // Chỉ chạy 1 lần khi component mount
+  }, []);
 
-  // --- SỬA LỖI: Cập nhật hàm register để nhận 1 object duy nhất ---
   const register = async (userData) => {
-    // Gửi toàn bộ object userData (đã chứa recaptchaToken) đến backend
     await api.post('/auth/register', userData);
   };
 
-  // --- SỬA LỖI: Cập nhật hàm login để nhận 1 object duy nhất ---
   const login = async (userData) => {
-    // Gửi toàn bộ object userData (đã chứa recaptchaToken) đến backend
     const { data } = await api.post('/auth/login', userData);
     setUser(data.user);
     setIsLoggedIn(true);
     closeAuthModal();
   };
 
-  // Hàm đăng xuất
+  // --- 1. THÊM MỚI: Hàm xử lý đăng nhập Google ---
+  const loginGoogle = async (credential) => {
+    try {
+      // Gửi token của Google xuống backend
+      const { data } = await api.post('/auth/google', { token: credential });
+
+      setUser(data.user);
+      setIsLoggedIn(true);
+      closeAuthModal();
+      return { success: true };
+    } catch (error) {
+      console.error("Google login error:", error);
+      // Ném lỗi ra để component UI (AuthForm) có thể hiển thị thông báo
+      throw error;
+    }
+  };
+
   const logout = async () => {
     try {
       await api.post('/auth/logout');
@@ -92,13 +87,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // --- HÀM QUAN TRỌNG ĐÃ ĐƯỢC KẾT HỢP ---
-  // Cập nhật thông tin user trong context sau khi chỉnh sửa profile thành công
   const updateUserContext = (newUserData) => {
     setUser(newUserData);
   };
 
-  // Refresh user data from server (for team changes, etc.)
   const refreshUser = async () => {
     try {
       const { data } = await api.get('/users/me');
@@ -110,7 +102,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Tạo đối tượng value để cung cấp cho các component con
   const value = {
     user,
     isLoggedIn,
@@ -120,9 +111,10 @@ export const AuthProvider = ({ children }) => {
     closeAuthModal,
     register,
     login,
+    loginGoogle, // <-- 2. Export hàm này để các component khác sử dụng
     logout,
-    updateUserContext, // <-- Đã thêm vào
-    refreshUser, // <-- NEW: Refresh user from server
+    updateUserContext,
+    refreshUser,
   };
 
   return (

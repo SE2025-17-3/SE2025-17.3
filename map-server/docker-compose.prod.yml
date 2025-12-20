@@ -1,0 +1,57 @@
+# docker-compose.prod.yml
+version: '3.8'
+
+services:
+  redis:
+    image: redis:alpine
+    container_name: map_redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+
+  backend:
+    image: august0508/map-backend:latest
+    container_name: map_backend
+    restart: always
+    depends_on:
+      - redis
+    environment:
+      - PORT=4000
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - FRONTEND_URL=https://se2025-17-3.codes
+      # Các biến này lấy từ .env trên server
+      - MONGO_URI=${MONGO_URI}
+      - DATABASE_URL=${DATABASE_URL}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - RECAPTCHA_V2_SECRET_KEY=${RECAPTCHA_V2_SECRET_KEY}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - EMAIL_USERNAME=${EMAIL_USERNAME}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
+    networks:
+      - app-network
+
+  frontend:
+    image: august0508/map-frontend:latest
+    container_name: map_frontend
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Chỉ cần mount chứng chỉ SSL, KHÔNG mount nginx.conf nữa
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+volumes:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge

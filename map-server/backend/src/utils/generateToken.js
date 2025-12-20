@@ -1,3 +1,4 @@
+// D:\Code\SE2025-17.3\map-server\backend\src\utils\generateToken.js
 import jwt from 'jsonwebtoken';
 
 export const generateToken = (id) => {

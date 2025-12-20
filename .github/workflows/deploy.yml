@@ -1,83 +1,91 @@
-# .github/workflows/deploy.yml
-
-name: Build, Push, and Deploy on Main or Develop
+#deploy.yml
+name: Professional CI/CD Pipeline
 
 on:
   push:
-    branches:
-      - main
-      - develop
+    branches: [ "main" ]
 
 jobs:
-  build_and_push:
-    # ... (phần này không thay đổi)
+  build-and-push:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Determine Image Tag
-        id: get_tag
-        run: |
-          branch_name=${{ github.ref_name }}
-          if [ "$branch_name" == "main" ]; then
-            echo "TAG=latest" >> $GITHUB_OUTPUT
-          else
-            echo "TAG=develop" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Log in to Docker Hub
+      - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push backend image
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # Build Backend
+      - name: Build and Push Backend
         uses: docker/build-push-action@v4
         with:
           context: ./map-server/backend
           push: true
-          tags: august0508/map-app-backend:${{ steps.get_tag.outputs.TAG }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/map-backend:latest
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/map-backend:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/map-backend:buildcache,mode=max
 
-      - name: Build and push frontend image
+      # Build Frontend
+      - name: Build and Push Frontend
         uses: docker/build-push-action@v4
         with:
           context: ./map-server/frontend
           push: true
-          tags: august0508/map-app-frontend:${{ steps.get_tag.outputs.TAG }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/map-frontend:latest
           build-args: |
             VITE_RECAPTCHA_V2_SITE_KEY=${{ secrets.VITE_RECAPTCHA_V2_SITE_KEY }}
-
-
+            VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+            VITE_API_URL=https://se2025-17-3.codes/api
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/map-frontend:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/map-frontend:buildcache,mode=max
 
   deploy:
+    needs: build-and-push
     runs-on: ubuntu-latest
-    needs: build_and_push
     steps:
-      - name: Deploy to Server via SSH
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Copy file docker-compose (ĐÃ BỎ copy nginx.conf)
+      - name: Copy docker-compose to server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "map-server/docker-compose.prod.yml"
+          target: "/home/${{ secrets.SSH_USER }}/deploy/"
+
+      - name: SSH and Deploy
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/se2025_17_3/SE2025-17.3
-            git checkout main && git pull origin main
-            git checkout develop && git pull origin develop
+            cd /home/${{ secrets.SSH_USER }}/deploy/map-server
+            mv docker-compose.prod.yml docker-compose.yml
+            
+            # Tạo .env
+            echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" > .env
+            echo "MONGO_URI=${{ secrets.MONGO_URI }}" >> .env
+            echo "DATABASE_URL=${{ secrets.MONGO_URI }}" >> .env
+            echo "SESSION_SECRET=${{ secrets.SESSION_SECRET }}" >> .env
+            echo "RECAPTCHA_V2_SECRET_KEY=${{ secrets.RECAPTCHA_V2_SECRET_KEY }}" >> .env
+            echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env
+            echo "EMAIL_USERNAME=${{ secrets.EMAIL_USERNAME }}" >> .env
+            echo "EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}" >> .env
+            
+            # Pull và Up
+            echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+            docker compose pull
+            docker compose up -d
 
-            docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-            
-            BRANCH_NAME=${{ github.ref_name }}
-            if [ "$BRANCH_NAME" == "main" ]; then
-              echo "🚀 Deploying PRODUCTION from 'main' branch..."
-              docker compose -f docker-compose.prod.yml pull
-              docker compose -p prod -f docker-compose.prod.yml up -d
-            else
-              echo "🚀 Deploying STAGING from 'develop' branch..."
-              docker compose -f docker-compose.develop.yml pull
-              docker compose -p dev -f docker-compose.develop.yml up -d
-            fi
-            
-            echo "🧹 Cleaning up old images..."
             docker image prune -f
-            echo "🎉 Deployment for $BRANCH_NAME completed!"
+

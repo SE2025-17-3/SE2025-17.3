@@ -1,4 +1,4 @@
-// backend/src/middleware/captchaMiddleware.js
+// D:\Code\SE2025-17.3\map-server\backend\src\middleware\captchaMiddleware.js
 import axios from 'axios';
 
 // Đổi tên hàm cho đúng hơn (tùy chọn) và bỏ kiểm tra score
@@ -11,7 +11,7 @@ export const verifyRecaptcha = async (req, res, next) => {
 
     try {
         const response = await axios.post(
-            `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_V3_SECRET_KEY}&response=${recaptchaToken}`
+            `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_V2_SECRET_KEY}&response=${recaptchaToken}`
         );
 
         // reCAPTCHA v2 chỉ cần kiểm tra 'success'

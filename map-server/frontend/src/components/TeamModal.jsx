@@ -1,4 +1,4 @@
-// frontend/src/components/TeamModal.jsx
+// D:\Code\SE2025-17.3\map-server\frontend\src\components\TeamModal.jsx
 import React, { useState, useEffect } from 'react';
 import { useTeam } from '../context/TeamContext';
 import { useAuth } from '../context/AuthContext';
@@ -384,7 +384,7 @@ const TeamModal = ({ isOpen, onClose, mode = 'list', teamId = null }) => {
                   <div className="space-y-2">
                     {stats.topContributors.map((contributor, index) => (
                       <div
-                        key={contributor._id}
+                        key={contributor._id || contributor.username || index}
                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                       >
                         <div className="flex items-center gap-3">
@@ -401,6 +401,7 @@ const TeamModal = ({ isOpen, onClose, mode = 'list', teamId = null }) => {
                   </div>
                 </div>
               )}
+
 
               <button
                 onClick={() => setActiveView('details')}

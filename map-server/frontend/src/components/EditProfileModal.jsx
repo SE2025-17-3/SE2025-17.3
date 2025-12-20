@@ -1,4 +1,3 @@
-// frontend/src/components/EditProfileModal.jsx
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -7,13 +6,24 @@ import './EditProfileModal.css';
 const EditProfileModal = ({ closeModal }) => {
     const { user, updateUserContext } = useAuth();
 
-    const [displayName, setDisplayName] = useState(user.displayName);
+    // --- SỬA LỖI URL ---
+    // Hàm này giúp lấy đúng đường dẫn server chứa ảnh
+    // 1. Nếu build production -> Lấy origin hiện tại (http://136.112.99.88)
+    // 2. Nếu chạy dev -> Lấy localhost:4000
+    const getBaseUrl = () => {
+        if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+        if (import.meta.env.PROD) return window.location.origin;
+        return 'http://localhost:4000';
+    };
+
+    const API_URL = getBaseUrl();
+    // -------------------
+
+    const [displayName, setDisplayName] = useState(user.displayName || '');
     const [avatarFile, setAvatarFile] = useState(null);
     const [preview, setPreview] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-
-
 
     const handleAvatarChange = (e) => {
         const file = e.target.files[0];
@@ -35,18 +45,29 @@ const EditProfileModal = ({ closeModal }) => {
         }
 
         try {
-            // Lệnh gọi API này đã đúng vì nó sử dụng instance 'api'
-            // đã được cấu hình với baseURL tương đối ('/api')
             const { data } = await api.patch('/users/profile', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
-            updateUserContext(data);
+            updateUserContext(data); // Cập nhật state toàn cục
             closeModal();
         } catch (err) {
+            console.error(err);
             setError(err.response?.data?.message || 'Cập nhật thất bại.');
         } finally {
             setLoading(false);
         }
+    };
+
+    // Helper để hiển thị ảnh: Nếu có preview (vừa chọn) thì dùng preview,
+    // nếu không thì dùng ảnh từ server (kèm API_URL)
+    const getAvatarSrc = () => {
+        if (preview) return preview;
+        if (user.avatarUrl) {
+            // Kiểm tra xem avatarUrl có phải là link tuyệt đối (http...) hay tương đối
+            if (user.avatarUrl.startsWith('http')) return user.avatarUrl;
+            return `${API_URL}${user.avatarUrl}`;
+        }
+        return null; // Hoặc đường dẫn ảnh default nếu muốn
     };
 
     return (
@@ -56,9 +77,13 @@ const EditProfileModal = ({ closeModal }) => {
                 <form onSubmit={handleSubmit}>
                     <div className="avatar-upload">
                         <label htmlFor="avatar-input">
-                            {/* user.avatarUrl đã là một đường dẫn tương đối (ví dụ: '/avatars/...'),
-                                trình duyệt sẽ tự động nối nó vào domain hiện tại. */}
-                            <img src={preview || user.avatarUrl} alt="Avatar Preview" className="avatar-preview" />
+                            <img
+                                src={getAvatarSrc() || '/default-avatar.png'}
+                                alt="Avatar Preview"
+                                className="avatar-preview"
+                                // Thêm xử lý lỗi nếu ảnh không load được
+                                onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.png'; }}
+                            />
                         </label>
                         <input id="avatar-input" type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
                     </div>
