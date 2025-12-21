@@ -43,7 +43,7 @@ export const getTodayChallenges = async (userId) => {
         {
           userId,
           challengeId: challenge._id,
-          periodKey: null // For daily challenges
+          date: { $gte: today, $lt: tomorrow }
         },
         {
           $setOnInsert: {
@@ -51,8 +51,7 @@ export const getTodayChallenges = async (userId) => {
             challengeId: challenge._id,
             progress: 0,
             completed: false,
-            date: today,
-            periodKey: null
+            date: today
           }
         },
         {
