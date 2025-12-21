@@ -146,51 +146,51 @@ const MapZoomController = ({ setCanPaint, onLoginRequired }) => {
 const AuthControls = () => {
   const { isLoggedIn, user, openAuthModal } = useAuth();
   return (
-      <div className="absolute top-4 right-4 z-[1200] auth-controls-ignore">
-        {isLoggedIn && user ? (
-            <Profile />
-        ) : (
-            <button
-                onClick={openAuthModal}
-                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md"
-            >
-              Đăng nhập
-            </button>
-        )}
-      </div>
+    <div className="absolute top-4 right-4 z-[1200] auth-controls-ignore">
+      {isLoggedIn && user ? (
+        <Profile />
+      ) : (
+        <button
+          onClick={openAuthModal}
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md"
+        >
+          Đăng nhập
+        </button>
+      )}
+    </div>
   );
 };
 
 // --- COMPONENT AUXILIARY BUTTONS ---
 const AuxiliaryButtons = ({ openLeaderboard, openTeamModal, currentTeam, openStore }) => {
   return (
-      <div className="absolute top-16 right-4 z-[1000] flex flex-col gap-3 items-end aux-buttons-ignore">
-        {currentTeam ? (
-            <TeamBadge onClick={openTeamModal} currentTeam={currentTeam} />
-        ) : (
-            <button
-                onClick={() => openTeamModal()}
-                className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-lg shadow-md transition-colors"
-            >
-              Mở Teams
-            </button>
-        )}
+    <div className="absolute top-16 right-4 z-[1000] flex flex-col gap-3 items-end aux-buttons-ignore">
+      {currentTeam ? (
+        <TeamBadge onClick={openTeamModal} currentTeam={currentTeam} />
+      ) : (
         <button
-            onClick={openLeaderboard}
-            className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-lg shadow-md transition-colors"
-            title="Open Leaderboard"
+          onClick={() => openTeamModal()}
+          className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-lg shadow-md transition-colors"
         >
-          Leaderboard
+          Team
         </button>
-        <button
-            onClick={openStore}
-            className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold rounded-lg shadow-md transition-all flex items-center gap-2"
-            title="Open Droplet Store"
-        >
-          <span className="text-xl">💧</span>
-          Store
-        </button>
-      </div>
+      )}
+      <button
+        onClick={openLeaderboard}
+        className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-lg shadow-md transition-colors"
+        title="Open Leaderboard"
+      >
+        Leaderboard
+      </button>
+      <button
+        onClick={openStore}
+        className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold rounded-lg shadow-md transition-all flex items-center gap-2"
+        title="Open Droplet Store"
+      >
+        <span className="text-xl">💧</span>
+        Store
+      </button>
+    </div>
   );
 };
 
@@ -269,9 +269,9 @@ const App = () => {
   const handleToggleFavorite = (gx, gy) => {
     const key = `${gx}:${gy}`;
     setFavorites((prev) =>
-        prev.some((p) => `${p.gx}:${p.gy}` === key)
-            ? prev.filter((p) => `${p.gx}:${p.gy}` !== key)
-            : [...prev, { gx, gy }]
+      prev.some((p) => `${p.gx}:${p.gy}` === key)
+        ? prev.filter((p) => `${p.gx}:${p.gy}` !== key)
+        : [...prev, { gx, gy }]
     );
   };
 
@@ -317,113 +317,113 @@ const App = () => {
   const handleShowZoomWarning = () => setZoomWarning("Bạn cần phóng to (Zoom in) để chọn Pixel.");
 
   return (
-      <div style={{ position: 'relative', height: '100vh', width: '100vw' }}>
-        {isAuthModalOpen && <AuthModal onClose={closeAuthModal} />}
-        {isVerificationRequired && <VerificationModal />}
+    <div style={{ position: 'relative', height: '100vh', width: '100vw' }}>
+      {isAuthModalOpen && <AuthModal onClose={closeAuthModal} />}
+      {isVerificationRequired && <VerificationModal />}
 
-        {zoomWarning && (
-            <ZoomWarningToast
-                message={zoomWarning}
-                onClose={() => setZoomWarning(null)}
-            />
-        )}
-
-        {isPixelInfoModalOpen && (
-            <PixelInfoModal
-                pixel={pixelInfo}
-                onClose={() => setIsPixelInfoModalOpen(false)}
-                onStartMultiPaint={handleStartMultiPaint}
-                onToggleFavorite={handleToggleFavorite}
-                isFavorite={favorites.some((p) => p.gx === pixelInfo?.gx && p.gy === pixelInfo?.gy)}
-                onShare={handleShare}
-            />
-        )}
-
-        {shareData && <ShareModal data={shareData} onClose={() => setShareData(null)} />}
-
-        {isLeaderboardOpen && (
-            <Leaderboard isOpen={isLeaderboardOpen} onClose={() => setIsLeaderboardOpen(false)} />
-        )}
-
-        {isTeamModalOpen && (
-            <TeamModal
-                isOpen={isTeamModalOpen}
-                onClose={() => setIsTeamModalOpen(false)}
-                mode={teamModalMode}
-            />
-        )}
-
-        {/* VÙNG BẢN ĐỒ */}
-        <div id="map-capture-area" style={{ width: '100%', height: '100%' }}>
-          <MapContainer
-              center={[0, 0]}
-              zoom={2}
-              maxZoom={20}
-              zoomSnap={0}
-              zoomDelta={1}
-              style={{ height: '100%', width: '100%', background: '#AAD3DF' }}
-              maxBounds={[[-85.05112878, -Infinity], [85.05112878, Infinity]]}
-              maxBoundsViscosity={1.0}
-              worldCopyJump={true}
-              inertia={true}
-              preferCanvas={true}
-          >
-            <TileLayer
-                noWrap={false}
-                url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
-                attribution='&copy; Google Maps'
-            />
-
-            <MapUrlHandler />
-            <MapInitializer />
-            <LocationButton />
-
-            <MapZoomController setCanPaint={setCanPaint} onLoginRequired={openAuthModal} />
-
-            <GlobalCanvasGrid
-                onLoginRequired={openAuthModal}
-                selectedPixelColor={selectedPixelColor}
-                pendingPixels={pendingPixels}
-                setPendingPixels={setPendingPixels}
-                onPixelClickForInfo={handlePixelClickForInfo}
-                pixelInfo={pixelInfo}
-                favorites={favorites}
-                canPaint={canPaint}
-                onZoomWarning={handleShowZoomWarning}
-                isPaletteVisible={isPaletteVisible}
-            />
-
-            <FavoriteMarkers favorites={favorites} onMarkerClick={handlePixelClickForInfo} />
-          </MapContainer>
-        </div>
-
-        <AuthControls />
-
-        <AuxiliaryButtons
-            openLeaderboard={openLeaderboard}
-            openTeamModal={openTeamModalDetails}
-            currentTeam={currentTeam}
-            openStore={() => setIsStoreOpen(true)}
+      {zoomWarning && (
+        <ZoomWarningToast
+          message={zoomWarning}
+          onClose={() => setZoomWarning(null)}
         />
+      )}
 
-        <ChallengePanel />
+      {isPixelInfoModalOpen && (
+        <PixelInfoModal
+          pixel={pixelInfo}
+          onClose={() => setIsPixelInfoModalOpen(false)}
+          onStartMultiPaint={handleStartMultiPaint}
+          onToggleFavorite={handleToggleFavorite}
+          isFavorite={favorites.some((p) => p.gx === pixelInfo?.gx && p.gy === pixelInfo?.gy)}
+          onShare={handleShare}
+        />
+      )}
 
-        {(!isPixelInfoModalOpen || isPaletteVisible) && (
-            <PaintControls
-                selectedPixelColor={selectedPixelColor}
-                setSelectedPixelColor={setSelectedPixelColor}
-                pendingPixels={pendingPixels}
-                setPendingPixels={setPendingPixels}
-                onLoginRequired={openAuthModal}
-                isPaletteVisible={isPaletteVisible}
-                setIsPaletteVisible={setIsPaletteVisible}
-                canPaint={canPaint}
-                isPixelInfoModalOpen={isPixelInfoModalOpen}
-            />
-        )}
+      {shareData && <ShareModal data={shareData} onClose={() => setShareData(null)} />}
 
-        <Store isOpen={isStoreOpen} onClose={() => setIsStoreOpen(false)} />
+      {isLeaderboardOpen && (
+        <Leaderboard isOpen={isLeaderboardOpen} onClose={() => setIsLeaderboardOpen(false)} />
+      )}
+
+      {isTeamModalOpen && (
+        <TeamModal
+          isOpen={isTeamModalOpen}
+          onClose={() => setIsTeamModalOpen(false)}
+          mode={teamModalMode}
+        />
+      )}
+
+      {/* VÙNG BẢN ĐỒ */}
+      <div id="map-capture-area" style={{ width: '100%', height: '100%' }}>
+        <MapContainer
+          center={[0, 0]}
+          zoom={2}
+          maxZoom={20}
+          zoomSnap={0}
+          zoomDelta={1}
+          style={{ height: '100%', width: '100%', background: '#AAD3DF' }}
+          maxBounds={[[-85.05112878, -Infinity], [85.05112878, Infinity]]}
+          maxBoundsViscosity={1.0}
+          worldCopyJump={true}
+          inertia={true}
+          preferCanvas={true}
+        >
+          <TileLayer
+            noWrap={false}
+            url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+            attribution='&copy; Google Maps'
+          />
+
+          <MapUrlHandler />
+          <MapInitializer />
+          <LocationButton />
+
+          <MapZoomController setCanPaint={setCanPaint} onLoginRequired={openAuthModal} />
+
+          <GlobalCanvasGrid
+            onLoginRequired={openAuthModal}
+            selectedPixelColor={selectedPixelColor}
+            pendingPixels={pendingPixels}
+            setPendingPixels={setPendingPixels}
+            onPixelClickForInfo={handlePixelClickForInfo}
+            pixelInfo={pixelInfo}
+            favorites={favorites}
+            canPaint={canPaint}
+            onZoomWarning={handleShowZoomWarning}
+            isPaletteVisible={isPaletteVisible}
+          />
+
+          <FavoriteMarkers favorites={favorites} onMarkerClick={handlePixelClickForInfo} />
+        </MapContainer>
       </div>
+
+      <AuthControls />
+
+      <AuxiliaryButtons
+        openLeaderboard={openLeaderboard}
+        openTeamModal={openTeamModalDetails}
+        currentTeam={currentTeam}
+        openStore={() => setIsStoreOpen(true)}
+      />
+
+      <ChallengePanel />
+
+      {(!isPixelInfoModalOpen || isPaletteVisible) && (
+        <PaintControls
+          selectedPixelColor={selectedPixelColor}
+          setSelectedPixelColor={setSelectedPixelColor}
+          pendingPixels={pendingPixels}
+          setPendingPixels={setPendingPixels}
+          onLoginRequired={openAuthModal}
+          isPaletteVisible={isPaletteVisible}
+          setIsPaletteVisible={setIsPaletteVisible}
+          canPaint={canPaint}
+          isPixelInfoModalOpen={isPixelInfoModalOpen}
+        />
+      )}
+
+      <Store isOpen={isStoreOpen} onClose={() => setIsStoreOpen(false)} />
+    </div>
   );
 };
 
