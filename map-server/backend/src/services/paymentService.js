@@ -1,7 +1,7 @@
 import { getStripeClient, isStripeEnabled } from '../config/stripe.js';
 import { getPackageById, getTotalDroplets } from '../config/paymentPackages.js';
 import Payment from '../models/Payment.js';
-import walletService from './walletService.js';
+import * as walletService from './walletService.js';
 import User from '../models/User.js';
 
 /**

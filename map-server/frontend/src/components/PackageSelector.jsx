@@ -17,12 +17,19 @@ const PackageSelector = ({ onSelectPackage, selectedPackageId }) => {
       const response = await fetch('/api/payments/packages', {
         credentials: 'include',
       });
+
+      // Check if user is not authenticated
+      if (response.status === 401) {
+        setError('Please log in to view payment packages');
+        return;
+      }
+
       const data = await response.json();
-      
+
       if (data.success) {
         setPackages(data.packages);
       } else {
-        setError('Failed to load packages');
+        setError(data.message || 'Failed to load packages');
       }
     } catch (err) {
       console.error('Error fetching packages:', err);
@@ -67,13 +74,13 @@ const PackageSelector = ({ onSelectPackage, selectedPackageId }) => {
               {pkg.bonusPercentage > 0 && (
                 <div className="bonus-badge">+{pkg.bonusPercentage}% Bonus</div>
               )}
-              
+
               <div className="package-price">{formatPrice(pkg.price)}</div>
               <div className="package-droplets">
                 <span className="droplet-icon">💧</span>
                 <span className="droplet-amount">{formatDroplets(totalDroplets)}</span>
               </div>
-              
+
               {pkg.bonusDroplets > 0 && (
                 <div className="package-breakdown">
                   <div className="breakdown-line">
@@ -84,10 +91,10 @@ const PackageSelector = ({ onSelectPackage, selectedPackageId }) => {
                   </div>
                 </div>
               )}
-              
+
               <div className="package-description">{pkg.description}</div>
-              
-              <button 
+
+              <button
                 className={`select-package-btn ${isSelected ? 'selected' : ''}`}
                 disabled={isSelected}
               >
