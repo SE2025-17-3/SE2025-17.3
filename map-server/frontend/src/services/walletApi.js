@@ -27,8 +27,32 @@ export const getTransactions = async (limit = 50, skip = 0) => {
   return response.data;
 };
 
+/**
+ * Purchase max capacity with droplets
+ */
+export const purchaseCapacity = async (quantity) => {
+  const response = await api.post('/store/purchase', {
+    itemId: 'capacity_upgrade_simple',
+    quantity
+  });
+  return response.data;
+};
+
+/**
+ * Purchase energy recharge with droplets
+ */
+export const purchaseEnergy = async (quantity) => {
+  const response = await api.post('/store/purchase', {
+    itemId: 'energy_boost_simple',
+    quantity
+  });
+  return response.data;
+};
+
 export default {
   getWallet,
   getWalletSummary,
-  getTransactions
+  getTransactions,
+  purchaseCapacity,
+  purchaseEnergy
 };
