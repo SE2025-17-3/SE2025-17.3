@@ -36,16 +36,31 @@ export const getTodayChallenges = async (userId) => {
   const result = [];
   for (const challenge of dailyChallenges) {
     let userChallenge = userChallengeMap.get(challenge._id.toString());
-    
+
     if (!userChallenge) {
-      // Create new user challenge for today
-      userChallenge = await UserChallenge.create({
-        userId,
-        challengeId: challenge._id,
-        progress: 0,
-        completed: false,
-        date: today
-      });
+      // Create or update user challenge for today using upsert to avoid duplicates
+      userChallenge = await UserChallenge.findOneAndUpdate(
+        {
+          userId,
+          challengeId: challenge._id,
+          periodKey: null // For daily challenges
+        },
+        {
+          $setOnInsert: {
+            userId,
+            challengeId: challenge._id,
+            progress: 0,
+            completed: false,
+            date: today,
+            periodKey: null
+          }
+        },
+        {
+          upsert: true,
+          new: true,
+          setDefaultsOnInsert: true
+        }
+      );
       userChallenge.challengeId = challenge;
     }
 
@@ -86,7 +101,7 @@ export const trackPixelAction = async (userId, pixelData, io) => {
 
     if (userChallenge) {
       userChallenge.progress += 1;
-      
+
       // Check if challenge is completed
       if (userChallenge.progress >= challenge.goal.count && !userChallenge.completed) {
         userChallenge.completed = true;
@@ -169,7 +184,7 @@ export const updateStreak = async (userId, io) => {
  */
 export const getUserStreak = async (userId) => {
   let userStreak = await UserStreak.findOne({ userId });
-  
+
   if (!userStreak) {
     return {
       currentStreak: 0,
@@ -202,7 +217,7 @@ export const getUserStreak = async (userId) => {
 export const getUserChallengeStats = async (userId) => {
   const user = await User.findById(userId).select('challengePoints badges');
   const streak = await getUserStreak(userId);
-  
+
   const totalCompleted = await UserChallenge.countDocuments({
     userId,
     completed: true
