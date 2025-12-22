@@ -8,7 +8,9 @@ const SoundSettings = ({ isOpen, onToggle }) => {
     const { bgmMuted, setBgmMuted, bgmVolume, setBgmVolume, sfxMuted, setSfxMuted } = useSound();
 
     return (
-        <MapControlWrapper className="top-52 right-4 flex flex-col items-end">
+        <MapControlWrapper className="top-[360px] right-4 flex flex-col items-end"
+        style={{ zIndex: 1200 }}
+        >
             <button
                 onClick={onToggle}
                 className={`w-10 h-10 rounded-full shadow-md flex items-center justify-center transition-transform active:scale-95 mb-2 ${isOpen ? 'bg-blue-100 ring-2 ring-blue-400' : 'bg-white hover:bg-gray-100'}`}
@@ -23,7 +25,6 @@ const SoundSettings = ({ isOpen, onToggle }) => {
                 <div className="bg-white/95 backdrop-blur p-4 rounded-xl shadow-xl border border-gray-200 w-64 animate-fade-in-down cursor-default">
                     <h3 className="text-sm font-bold text-gray-700 mb-3 border-b pb-2">Âm thanh</h3>
                     
-                    {/* Background Music Control */}
                     <div className="mb-4">
                         <div className="flex justify-between items-center mb-1">
                             <span className="text-xs font-semibold text-gray-600">Nhạc nền ({bgmVolume}%)</span>
@@ -32,7 +33,6 @@ const SoundSettings = ({ isOpen, onToggle }) => {
                         <input type="range" min="0" max="100" value={bgmVolume} onChange={(e) => setBgmVolume(Number(e.target.value))} disabled={bgmMuted} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
                     </div>
 
-                    {/* SFX Control */}
                     <div className="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
                         <span className="text-xs font-semibold text-gray-600">Hiệu ứng (SFX)</span>
                         <button onClick={() => setSfxMuted(!sfxMuted)} className={`px-3 py-1 text-xs rounded-full font-bold transition-colors ${sfxMuted ? 'bg-gray-300 text-gray-600' : 'bg-green-500 text-white'}`}>{sfxMuted ? 'Đang Tắt' : 'Đang Bật'}</button>

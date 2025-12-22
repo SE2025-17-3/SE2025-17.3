@@ -1,9 +1,11 @@
+// map-server/frontend/src/components/Leaderboard.jsx
+
 import React, { useState, useEffect } from 'react';
 import { getLeaderboard } from '../services/leaderboardApi';
 
-const Leaderboard = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState('players'); // 'players' or 'teams'
-  const [period, setPeriod] = useState('all'); // 'today', 'week', 'month', 'all'
+const Leaderboard = ({ isOpen, onClose, onTeamClick }) => {
+  const [activeTab, setActiveTab] = useState('players');
+  const [period, setPeriod] = useState('all');
   const [players, setPlayers] = useState([]);
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -57,12 +59,12 @@ const Leaderboard = ({ isOpen, onClose }) => {
           </div>
 
           {/* Period Filter */}
-          <div className="flex gap-2 mb-4">
+          <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
             {periodOptions.map((option) => (
               <button
                 key={option.value}
                 onClick={() => setPeriod(option.value)}
-                className={`px-4 py-2 rounded-lg transition-all text-sm font-medium ${
+                className={`px-4 py-2 rounded-lg transition-all text-sm font-medium whitespace-nowrap ${
                   period === option.value
                     ? 'bg-purple-600 text-white shadow-md'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -155,8 +157,7 @@ const Leaderboard = ({ isOpen, onClose }) => {
                           </div>
                         </div>
                         <div className="text-right">
-                          {/* SỬA LỖI TẠI ĐÂY: Dùng player.pixels thay vì player.pixelCount */}
-                          <p className="text-xl font-bold text-gray-700">{player.pixels}</p> 
+                          <p className="text-xl font-bold text-gray-700">{player.pixelCount}</p> 
                           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">pixels</p>
                         </div>
                       </div>
@@ -175,8 +176,10 @@ const Leaderboard = ({ isOpen, onClose }) => {
                   ) : (
                     teams.map((team, index) => (
                       <div
-                        key={team._id || team.teamName || index}
-                        className={`flex items-center justify-between p-4 rounded-xl border shadow-sm transition-all hover:scale-[1.01] ${
+                        key={team.teamId || index}
+                        // --- Thêm sự kiện onClick để xem chi tiết team ---
+                        onClick={() => onTeamClick && onTeamClick(team.teamId)}
+                        className={`flex items-center justify-between p-4 rounded-xl border shadow-sm transition-all hover:scale-[1.01] cursor-pointer ${
                           index === 0
                             ? 'bg-yellow-50 border-yellow-400 ring-1 ring-yellow-200'
                             : index === 1
@@ -185,6 +188,7 @@ const Leaderboard = ({ isOpen, onClose }) => {
                             ? 'bg-orange-50 border-orange-400'
                             : 'bg-white border-gray-200 hover:shadow-md'
                         }`}
+                        title="Click để xem thành viên"
                       >
                         <div className="flex items-center gap-4">
                           <span
@@ -201,14 +205,15 @@ const Leaderboard = ({ isOpen, onClose }) => {
                             {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
                           </span>
                           <div>
-                            <p className="font-bold text-gray-800 text-lg">{team.teamName}</p>
-                            {/* Chỉnh sửa hiển thị số thành viên nếu có dữ liệu, hoặc ẩn đi nếu backend chưa trả về */}
-                            {team.memberCount && <p className="text-sm text-gray-500">{team.memberCount} members</p>}
+                            <p className="font-bold text-gray-800 text-lg hover:text-blue-600 transition-colors">
+                                {team.teamName}
+                            </p>
+                            {/* Hiển thị số thành viên đúng */}
+                            <p className="text-sm text-gray-500">{team.memberCount || 0} members</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          {/* SỬA LỖI TẠI ĐÂY: Dùng team.pixels thay vì team.pixelCount */}
-                          <p className="text-xl font-bold text-gray-700">{team.pixels}</p>
+                          <p className="text-xl font-bold text-gray-700">{team.pixelCount}</p>
                           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">pixels</p>
                         </div>
                       </div>

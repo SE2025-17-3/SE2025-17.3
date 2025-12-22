@@ -1,3 +1,5 @@
+// map-server/backend/src/controllers/paymentController.js
+
 import paymentService from '../services/paymentService.js';
 import { getAllPackages } from '../config/paymentPackages.js';
 import { getStripeClient, isStripeEnabled } from '../config/stripe.js';

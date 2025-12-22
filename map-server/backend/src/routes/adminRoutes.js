@@ -1,3 +1,5 @@
+// map-server/backend/src/routes/adminRoutes.js
+
 import express from 'express';
 import { protect } from '../middleware/authMiddleware.js';
 import { adminOnly } from '../middleware/adminMiddleware.js';

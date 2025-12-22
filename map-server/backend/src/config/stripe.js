@@ -1,3 +1,4 @@
+// map-server/backend/src/config/stripe.js
 import Stripe from 'stripe';
 
 let stripe = null;

@@ -5,6 +5,7 @@ import Outbox from '../models/Outbox.js';
 import User from '../models/User.js';
 import { calculateEnergy } from './authController.js';
 
+// Bây giờ getRedisClient đã có trong file config nên import này sẽ KHÔNG lỗi nữa
 import { getRedisClient, getPublisher, STREAMS } from '../config/redis.js';
 import * as challengeService from '../services/challengeService.js';
 
@@ -151,7 +152,7 @@ export const addPixel = async (req, res, io) => {
             await redis.del([...chunksToClear]);
         }
 
-        // Challenge tracking (non-blocking logic)
+        // Challenge tracking (non-blocking logic) - Code của team bạn
         try {
             await challengeService.updateStreak(userId, io);
             await challengeService.trackPixelAction(userId, payload, io);

@@ -1,3 +1,5 @@
+// map-server/backend/src/config/paymentPackages.js
+
 // Payment package configurations
 const PAYMENT_PACKAGES = {
   DROPLET_5: {
