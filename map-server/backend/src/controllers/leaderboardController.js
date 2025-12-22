@@ -54,7 +54,7 @@ export const getTopPlayers = async (req, res) => {
       { $limit: limitNumber(limit) },
       { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
       { $unwind: '$user' },
-      { $project: { _id: 0, userId: '$_id', username: '$user.username', teamId: '$user.teamId', pixels: 1, lastActivity: 1 } },
+      { $project: { _id: 0, userId: '$_id', username: '$user.username', teamId: '$user.teamId', pixelCount: '$pixels', lastActivity: 1 } },
     ]);
 
     res.json({ period, count: top.length, data: top });
@@ -85,7 +85,7 @@ export const getTopTeams = async (req, res) => {
       { $limit: limitNumber(limit) },
       { $lookup: { from: 'teams', localField: '_id', foreignField: '_id', as: 'team' } },
       { $unwind: '$team' },
-      { $project: { _id: 0, teamId: '$_id', teamName: '$team.name', pixels: 1, lastActivity: 1 } },
+      { $project: { _id: 0, teamId: '$_id', teamName: '$team.name', pixelCount: '$pixels', lastActivity: 1 } },
     ];
 
     const top = await PixelEvent.aggregate(pipeline);
@@ -117,7 +117,7 @@ export const getLeaderboardCombined = async (req, res) => {
       { $unwind: '$user' },
       { $lookup: { from: 'teams', localField: 'user.teamId', foreignField: '_id', as: 'team' } },
       { $unwind: { path: '$team', preserveNullAndEmptyArrays: true } },
-      { $project: { _id: 0, userId: '$_id', username: '$user.username', teamName: '$team.name', pixels: 1, lastActivity: 1 } },
+      { $project: { _id: 0, userId: '$_id', username: '$user.username', teamName: '$team.name', pixelCount: '$pixels', lastActivity: 1 } },
     ]);
 
     // Teams
@@ -131,7 +131,7 @@ export const getLeaderboardCombined = async (req, res) => {
       { $limit: teamsLimitVal },
       { $lookup: { from: 'teams', localField: '_id', foreignField: '_id', as: 'team' } },
       { $unwind: '$team' },
-      { $project: { _id: 0, teamId: '$_id', teamName: '$team.name', pixels: 1, lastActivity: 1 } },
+      { $project: { _id: 0, teamId: '$_id', teamName: '$team.name', pixelCount: '$pixels', memberCount: { $size: { $ifNull: ['$team.members', []] } }, lastActivity: 1 } },
     ]);
 
     const [players, teams] = await Promise.all([playersPromise, teamsPromise]);

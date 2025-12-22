@@ -31,6 +31,38 @@ const userSchema = new mongoose.Schema({
   verificationExpire: Date,
   resetPasswordToken: String,
   resetPasswordExpire: Date,
+
+  // --- CHALLENGE SYSTEM ---
+  challengePoints: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+  challengeStreak: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+  lastChallengeDate: {
+    type: Date,
+    default: null,
+  },
+  totalChallengesCompleted: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+  badges: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Badge',
+  }],
+
+  // --- PAYMENT SYSTEM ---
+  stripeCustomerId: {
+    type: String,
+    sparse: true,
+    index: true,
+  },
 }, { timestamps: true });
 
 // ... (Giữ nguyên middleware pre-save và method matchPassword)
