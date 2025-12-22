@@ -1,3 +1,4 @@
+// map-server/backend/migrations/20251122000000-add-membercount-to-teams.cjs
 module.exports = {
   /**
    * Migration: Add memberCount field to teams collection

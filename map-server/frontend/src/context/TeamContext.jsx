@@ -1,4 +1,4 @@
-// D:\Code\SE2025-17.3\map-server\frontend\src\context\TeamContext.jsx
+// map-server/frontend/src/context/TeamContext.jsx
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import * as teamApi from '../services/teamApi';
 import { useAuth } from './AuthContext';

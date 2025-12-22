@@ -1,4 +1,5 @@
-// D:\Code\SE2025-17.3\map-server\frontend\src\components\LocationButton.jsx
+// map-server/frontend/src/components/LocationButton.jsx
+
 import React, { useState } from 'react';
 import { useMap, Marker } from 'react-leaflet';
 import L from 'leaflet';

@@ -1,3 +1,5 @@
+// map-server/backend/src/utils/sendEmail.js
+
 import nodemailer from 'nodemailer';
 
 const sendEmail = async (options) => {

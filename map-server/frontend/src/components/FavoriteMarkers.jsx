@@ -1,4 +1,4 @@
-// D:\Code\SE2025-17.3\map-server\frontend\src\components\FavoriteMarkers.jsx
+// map-server/frontend/src/components/FavoriteMarkers.jsx
 
 import React from 'react';
 import { Marker, useMap } from 'react-leaflet';

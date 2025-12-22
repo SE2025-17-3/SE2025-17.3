@@ -1,4 +1,5 @@
-// D:\Code\SE2025-17.3\map-server\backend\src\routes\pixelRoutes.js
+// map-server/backend/src/routes/pixelRoutes.js
+
 import express from 'express';
 import { getChunk, addPixel, getPixelDetail } from '../controllers/pixelController.js';
 import { protect } from '../middleware/authMiddleware.js';

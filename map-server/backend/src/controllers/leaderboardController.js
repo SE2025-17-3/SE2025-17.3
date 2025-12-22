@@ -1,4 +1,5 @@
-// D:\Code\SE2025-17.3\map-server\backend\src\controllers\leaderboardController.js
+// map-server/backend/src/controllers/leaderboardController.js
+
 import Pixel from '../models/Pixel.js';
 import PixelEvent from '../models/PixelEvent.js';
 import User from '../models/User.js';

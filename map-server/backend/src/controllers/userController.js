@@ -1,8 +1,11 @@
+// map-server/backend/src/controllers/userController.js
+
 import User from '../models/User.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { calculateEnergy } from './authController.js'; // Import hàm tính năng lượng
+import { calculateEnergy } from './authController.js';
+import Appeal from '../models/Appeal.js';
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -85,3 +88,34 @@ export const updateUserProfile = async (req, res) => {
         res.status(500).json({ message: 'Lỗi server khi cập nhật profile' });
     }
 };
+
+export const submitAppeal = async (req, res) => {
+    const { content } = req.body;
+    const userId = req.user._id;
+
+    try {
+        // 1. Kiểm tra xem user có bị ban không
+        if (!req.user.isBanned) {
+            return res.status(400).json({ message: 'Tài khoản của bạn không bị khóa.' });
+        }
+
+        // 2. Kiểm tra xem đã có đơn đang chờ chưa (tránh spam)
+        const existingAppeal = await Appeal.findOne({ user: userId, status: 'pending' });
+        if (existingAppeal) {
+            return res.status(400).json({ message: 'Bạn đã có một đơn khiếu nại đang chờ xử lý.' });
+        }
+
+        // 3. Tạo đơn mới
+        await Appeal.create({
+            user: userId,
+            email: req.user.email,
+            content: content
+        });
+
+        res.status(201).json({ message: 'Gửi đơn khiếu nại thành công. Vui lòng chờ Admin phản hồi.' });
+    } catch (error) {
+        console.error("Lỗi gửi đơn:", error);
+        res.status(500).json({ message: 'Lỗi server.' });
+    }
+};
+
