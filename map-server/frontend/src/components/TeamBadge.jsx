@@ -1,4 +1,4 @@
-// D:\Code\SE2025-17.3\map-server\frontend\src\components\TeamBadge.jsx
+// map-server/frontend/src/components/TeamBadge.jsx
 import React from 'react';
 import { useTeam } from '../context/TeamContext';
 

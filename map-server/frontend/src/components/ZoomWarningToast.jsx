@@ -1,4 +1,4 @@
-// D:\Code\SE2025-17.3\map-server\frontend\src\components\ZoomWarningToast.jsx
+// map-server/frontend/src/components/ZoomWarningToast.jsx
 
 import React, { useEffect } from 'react';
 
