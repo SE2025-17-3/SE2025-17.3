@@ -1,5 +1,3 @@
-// map-server/backend/src/config/redis.js
-
 import Redis from 'ioredis';
 import dotenv from 'dotenv';
 
@@ -18,38 +16,46 @@ let publisherClient = null;
 let subscriberClient = null;
 
 /**
+ * Kiểm tra Redis có được bật hay không
+ * (dùng cho Outbox, Stream Consumer, v.v.)
+ */
+export const isRedisEnabled = () => {
+  return !!REDIS_URL;
+};
+
+/**
  * Internal helper: tạo client Redis với cấu hình chung
  */
 const createRedisClient = (label) => {
   const client = new Redis(REDIS_URL, {
-    // family: 4, // Force IPv4 nếu cần
     enableReadyCheck: true,
-    maxRetriesPerRequest: null, // Quan trọng cho stream consumer
+    maxRetriesPerRequest: null, // Quan trọng cho Redis Streams
     retryStrategy(times) {
       const delay = Math.min(times * 50, 2000);
       return delay;
     },
     reconnectOnError(err) {
       console.error(`❌ Redis ${label} error:`, err.message);
-      return true; // Reconnect on all errors
+      return true; // Luôn reconnect
     },
   });
 
   client.on('connect', () => console.log(`🔗 Redis ${label} connected`));
-  client.on('error', (err) => console.error(`❌ Redis ${label} connection error:`, err.message));
-  
+  client.on('error', (err) =>
+      console.error(`❌ Redis ${label} connection error:`, err.message)
+  );
+
   return client;
 };
 
-// --- QUAN TRỌNG: EXPORT BIẾN 'redis' ĐỂ CONTROLLER DÙNG ---
-// Khởi tạo Client chung (General) ngay lập tức để tránh lỗi import undefined
+// --- QUAN TRỌNG: EXPORT CLIENT CHUNG ---
+// Khởi tạo sẵn để controller dùng trực tiếp
 export const redis = createRedisClient('General');
 
 export const getRedisClient = () => redis;
 
-
 /**
- * Get Redis client for publishing to streams (Lazy load)
+ * Redis client cho Publisher (Lazy load)
  */
 export const getPublisher = () => {
   if (!publisherClient) {
@@ -59,7 +65,7 @@ export const getPublisher = () => {
 };
 
 /**
- * Get Redis client for consuming streams (Lazy load)
+ * Redis client cho Subscriber / Consumer (Lazy load)
  */
 export const getSubscriber = () => {
   if (!subscriberClient) {
@@ -69,23 +75,31 @@ export const getSubscriber = () => {
 };
 
 /**
- * Gracefully close all Redis connections
+ * Gracefully close tất cả Redis connections
  */
 export const closeAllRedisConnections = async () => {
   console.log('🔌 Closing all Redis connections...');
   const promises = [];
 
-  // Đóng client chung
-  promises.push(redis.quit().catch((err) => console.error('Error closing general client:', err)));
+  promises.push(
+      redis.quit().catch((err) =>
+          console.error('Error closing general client:', err)
+      )
+  );
 
   if (publisherClient) {
     promises.push(
-      publisherClient.quit().catch((err) => console.error('Error closing publisher:', err))
+        publisherClient.quit().catch((err) =>
+            console.error('Error closing publisher:', err)
+        )
     );
   }
+
   if (subscriberClient) {
     promises.push(
-      subscriberClient.quit().catch((err) => console.error('Error closing subscriber:', err))
+        subscriberClient.quit().catch((err) =>
+            console.error('Error closing subscriber:', err)
+        )
     );
   }
 
@@ -93,7 +107,7 @@ export const closeAllRedisConnections = async () => {
   console.log('✅ All Redis connections closed');
 };
 
-// Stream names as constants
+// Stream names
 export const STREAMS = {
   PIXEL_EVENTS: 'pixels:events',
 };
@@ -102,4 +116,3 @@ export const STREAMS = {
 export const CONSUMER_GROUPS = {
   PIXEL_BROADCASTERS: 'pixel-broadcasters',
 };
-
