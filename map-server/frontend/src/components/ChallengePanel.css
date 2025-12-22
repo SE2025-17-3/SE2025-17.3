@@ -227,3 +227,61 @@
 .challenge-panel:not(.collapsed) .challenge-icon-collapsed {
   display: none;
 }
+
+/* Updated stats layout for 3 items */
+.challenge-stats {
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.stat-icon {
+  font-size: 1.5rem;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+/* Challenge footer with claim button */
+.challenge-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  gap: 8px;
+}
+
+/* Claim reward button */
+.claim-reward-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.claim-reward-button:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.claim-reward-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Claimed badge */
+.claimed-badge {
+  color: #10b981;
+  font-weight: bold;
+  font-size: 0.875rem;
+  background: rgba(16, 185, 129, 0.2);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
