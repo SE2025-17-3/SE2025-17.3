@@ -1,20 +1,21 @@
-// D:\Code\SE2025-17.3\map-server\backend\src\routes\pixelRoutes.js
 import express from 'express';
-import { getChunk, addPixel, getPixelDetail } from '../controllers/pixelController.js';
+// Thêm getPixelsByChunks vào import
+import { getChunk, addPixel, getPixelDetail, getPixelsByChunks } from '../controllers/pixelController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
-// Export a function that accepts io and returns configured router
 const configurePixelRoutes = (io) => {
   const router = express.Router();
 
-  // Route GET (Xem pixel) - Công khai cho mọi người
+  // Route GET (Xem pixel) - Công khai
   router.get('/chunk/:chunkX/:chunkY', getChunk);
+  router.get('/detail', getPixelDetail);
 
-  router.get('/detail', getPixelDetail); 
+  // --- THÊM ROUTE MỚI Ở ĐÂY ---
+  // Dùng POST vì body chứa mảng ID có thể dài
+  router.post('/batch-chunks', getPixelsByChunks);
 
   // Route POST (Tô màu) - Được bảo vệ
   router.post('/', protect, (req, res) => {
-    // Chuyển io vào hàm controller
     addPixel(req, res, io);
   });
 

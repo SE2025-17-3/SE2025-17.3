@@ -1,3 +1,4 @@
+//frontend/src/components/GlobalCanvasGrid.jsx
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useMap } from "react-leaflet";
 import L from "leaflet";
@@ -9,6 +10,7 @@ import {
     MIN_ZOOM_TO_SHOW_PIXELS,
 } from "../config/constants";
 import { useSocket } from "../context/SocketContext.jsx";
+import { getPixelsByChunkIds } from "../services/pixelApi";
 import api from "../services/api";
 
 const GlobalCanvasGrid = ({
@@ -113,30 +115,25 @@ const GlobalCanvasGrid = ({
         });
     }, [canPaint, latLngToGrid, hovered, map]);
 
-    // --- 4. LOAD DATA TỪ API ---
-    // --- 4. LOAD DATA TỪ API (DEBUG VERSION) ---
-    // --- LOAD DATA TỪ API (PHIÊN BẢN SIÊU DEBUG) ---
-    // --- LOAD DATA TỪ API (PHIÊN BẢN SIÊU DEBUG) ---
+
     const loadVisibleChunks = useCallback(async () => {
         const zoom = map.getZoom();
 
-        // CHECKPOINT 1: Kiểm tra Zoom
         console.log(`🚀 [1] Hàm loadVisibleChunks đã chạy! Zoom: ${zoom}`);
 
         if (zoom < MIN_ZOOM_TO_SHOW_PIXELS) {
-            console.log(`🛑 Zoom quá nhỏ (cần >= ${MIN_ZOOM_TO_SHOW_PIXELS}), dừng tải.`);
             return;
         }
 
+        // Hủy request cũ nếu đang chạy dở
         if (abortControllerRef.current) abortControllerRef.current.abort();
         abortControllerRef.current = new AbortController();
-        const signal = abortControllerRef.current.signal;
+        // const signal = abortControllerRef.current.signal; // (Tạm thời API batching chưa hỗ trợ signal abort bên trong axios wrapper của bạn, có thể bỏ qua hoặc thêm vào axios config)
 
         const bounds = map.getBounds().pad(0.1);
         const nw = latLngToGrid(bounds.getNorthWest());
         const se = latLngToGrid(bounds.getSouthEast());
 
-        // Tính toán chunk
         let startX = Math.floor(nw.gx / CHUNK_SIZE);
         let endX = Math.floor(se.gx / CHUNK_SIZE);
         const chunkY_min = Math.floor(nw.gy / CHUNK_SIZE);
@@ -144,77 +141,75 @@ const GlobalCanvasGrid = ({
         const totalChunksX = Math.ceil(GRID_WIDTH / CHUNK_SIZE);
         if (endX < startX) { startX = 0; endX = totalChunksX - 1; }
 
-        const chunksToLoad = [];
+        // 1. Lọc ra các ID chunk cần tải
+        const chunksNeeded = [];
         for (let x = startX; x <= endX; x++) {
             for (let y = chunkY_min; y <= chunkY_max; y++) {
-                const chunkKey = `${x}:${y}`;
-                // TẠM THỜI BỎ QUA CACHE ĐỂ DEBUG (Luôn tải lại)
-                // if (!loadedChunksRef.current.has(chunkKey)) {
-                loadedChunksRef.current.add(chunkKey);
-                chunksToLoad.push({ x, y, key: chunkKey });
-                // }
+                // Tạo ID dạng "x_y" (khớp với backend split('_'))
+                const chunkKey = `${x}_${y}`;
+
+                // Chỉ tải nếu chưa có trong loadedChunksRef
+                if (!loadedChunksRef.current.has(chunkKey)) {
+                    chunksNeeded.push(chunkKey);
+                }
             }
         }
 
-        // CHECKPOINT 2: Kiểm tra số lượng chunk cần tải
-        console.log(`📦 [2] Cần tải ${chunksToLoad.length} chunks.`);
+        console.log(`📦 [2] Cần tải ${chunksNeeded.length} chunks mới.`);
 
-        if (chunksToLoad.length === 0) return;
+        if (chunksNeeded.length === 0) return;
 
         try {
-            const promises = chunksToLoad.map(({ x, y }) =>
-                api.get(`/pixels/chunk/${x}/${y}`, { signal })
-                    .then(res => {
-                        // CHECKPOINT 3: Kiểm tra dữ liệu thô từ API
-                        // Quan trọng: Kiểm tra xem nó có phải là mảng không?
-                        const isArr = Array.isArray(res.data);
-                        console.log(`📡 [3] API Chunk ${x}:${y} -> Status: ${res.status}, Là mảng? ${isArr}, Số lượng: ${isArr ? res.data.length : 'N/A'}`);
+            // Đánh dấu là đã đang tải (để tránh request trùng lặp ngay lập tức)
+            chunksNeeded.forEach(key => loadedChunksRef.current.add(key));
 
-                        // Nếu không phải mảng, in ra xem nó là cái quái gì
-                        if (!isArr) console.warn("⚠️ API trả về không phải mảng:", res.data);
+            // 2. GỌI API BATCHING (Gửi 1 request duy nhất)
+            // Chia nhỏ batch nếu quá lớn (ví dụ mỗi lần 200 chunk) để an toàn
+            const BATCH_LIMIT = 200;
+            const promises = [];
 
-                        return res.data;
-                    })
-                    .catch(err => {
-                        if (err.name !== 'CanceledError' && err.code !== "ERR_CANCELED") {
-                            console.error(`❌ [Lỗi tải] Chunk ${x}:${y}`, err.message);
-                        }
-                        return null;
-                    })
-            );
+            for (let i = 0; i < chunksNeeded.length; i += BATCH_LIMIT) {
+                const batchIds = chunksNeeded.slice(i, i + BATCH_LIMIT);
+                console.log(`📡 Đang gửi batch ${batchIds.length} chunks...`);
+                promises.push(getPixelsByChunkIds(batchIds));
+            }
 
             const results = await Promise.all(promises);
 
-            const newPixels = new Map();
+            // 3. Tổng hợp kết quả
             let pixelCount = 0;
+            const newPixelsMap = new Map();
 
-            results.forEach(chunkData => {
-                if (Array.isArray(chunkData)) {
-                    chunkData.forEach(p => {
-                        newPixels.set(`${p.gx}:${p.gy}`, p.color);
+            results.forEach(pixelArray => {
+                if (Array.isArray(pixelArray)) {
+                    pixelArray.forEach(p => {
+                        // Key lưu trong Map hiển thị là "gx:gy"
+                        newPixelsMap.set(`${p.gx}:${p.gy}`, p.color);
                         pixelCount++;
                     });
                 }
             });
 
-            // CHECKPOINT 4: Kết quả tổng hợp
             console.log(`📊 [4] Tổng hợp được ${pixelCount} pixels.`);
 
             if (pixelCount > 0) {
                 setPixels(prev => {
                     const merged = new Map(prev);
-                    newPixels.forEach((val, key) => merged.set(key, val));
+                    newPixelsMap.forEach((val, key) => merged.set(key, val));
                     console.log(`💾 [5] State updated thành công! Tổng pixel hiển thị: ${merged.size}`);
                     return merged;
                 });
             } else {
-                console.log("⚠️ [5] Không có pixel nào để update (pixelCount = 0)");
+                console.log("⚠️ [5] Không có pixel nào mới trong các chunk này (vùng trống).");
             }
 
         } catch (error) {
-            console.error("🔥 Lỗi nghiêm trọng:", error);
+            console.error("🔥 Lỗi tải batch chunks:", error);
+            // Nếu lỗi, xóa khỏi loadedChunksRef để lần sau thử lại
+            chunksNeeded.forEach(key => loadedChunksRef.current.delete(key));
         }
     }, [map, latLngToGrid]);
+
 
     // --- 5. EVENTS (QUAN TRỌNG: ĐÃ BỎ SỰ KIỆN SPAM) ---
     useEffect(() => {
@@ -227,14 +222,15 @@ const GlobalCanvasGrid = ({
     }, [map, handleInteraction, handleMove]);
 
     useEffect(() => {
-        // SỬA LỖI: Chỉ load khi DỪNG kéo hoặc DỪNG zoom
-        const events = "moveend zoomend";
-        map.on(events, loadVisibleChunks);
+        // Chỉ gọi load khi người dùng DỪNG thao tác (tiết kiệm request)
+        const loadEvent = () => loadVisibleChunks();
 
-        // Load lần đầu
+        map.on("moveend zoomend", loadEvent);
+
+        // Gọi lần đầu khi mount
         loadVisibleChunks();
 
-        return () => map.off(events, loadVisibleChunks);
+        return () => map.off("moveend zoomend", loadEvent);
     }, [map, loadVisibleChunks]);
 
     // --- 6. SOCKET ---

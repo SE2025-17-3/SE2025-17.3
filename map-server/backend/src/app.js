@@ -4,6 +4,10 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+// --- 1. IMPORT THÊM SESSION & MONGO STORE ---
+import session from 'express-session';
+import MongoStore from 'connect-mongo';
+// --------------------------------------------
 
 import configurePixelRoutes from './routes/pixelRoutes.js';
 import authRoutes from './routes/authRoutes.js';
@@ -17,26 +21,50 @@ import storeRoutes from './routes/storeRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 
 const app = express();
-// Lấy URL từ biến môi trường, fallback về localhost nếu chạy local
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const FRONTEND_URL = process.env.FRONTEND_URL ;
+const MONGO_URI = process.env.MONGO_URI ; // Fallback nếu chưa config env
 
 // --- QUAN TRỌNG KHI LÊN PRODUCTION (NGINX/HTTPS) ---
-// Giúp Express nhận diện được giao thức HTTPS từ Nginx chuyển vào
 app.set('trust proxy', 1);
 // ---------------------------------------------------
 
 // 1. CORS
 app.use(cors({
-  origin: FRONTEND_URL,
+  origin: ['https://se2025-17-3.codes', 'https://www.se2025-17-3.codes', 'http://localhost:5173'], // Thêm localhost để test dev
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'] // Khai báo rõ method cho chắc chắn
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
 }));
 
 // 2. Body Parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 3. Static Files (Avatar)
+// --- 3. CẤU HÌNH SESSION (BẮT BUỘC THÊM ĐOẠN NÀY) ---
+app.use(session({
+  name: process.env.SESSION_NAME || 'connect.sid',
+  secret: process.env.SESSION_SECRET || 'secret_key_fallback', // Hãy đảm bảo có biến này trong .env
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: MONGO_URI,
+    collectionName: 'sessions', // Tên collection lưu session trong DB
+    ttl: 14 * 24 * 60 * 60 // Session tồn tại 14 ngày
+  }),
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 24, // 1 ngày
+    httpOnly: true, // Chặn JS phía client đọc cookie (Bảo mật)
+
+    // --- CẤU HÌNH FIX LỖI TRACKING PREVENTION / 401 TRÊN CLOUDFLARE ---
+    // secure: true -> Bắt buộc khi chạy HTTPS
+    // sameSite: 'none' -> Bắt buộc khi Frontend và Backend khác domain hoặc qua proxy
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+    // ------------------------------------------------------------------
+  }
+}));
+// -----------------------------------------------------
+
+// 4. Static Files (Avatar)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, '..', 'public')));

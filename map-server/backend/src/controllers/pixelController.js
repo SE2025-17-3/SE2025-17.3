@@ -1,3 +1,4 @@
+// backend/src/controllers/pixelController.js
 import mongoose from 'mongoose';
 import Pixel from '../models/Pixel.js';
 import PixelEvent from '../models/PixelEvent.js';
@@ -226,5 +227,87 @@ export const getPixelDetail = async (req, res) => {
   } catch (err) {
     console.error("❌ Lỗi getPixelDetail:", err);
     res.status(500).json({});
+  }
+};
+
+// --- 4. API GET PIXELS BY CHUNKS (Batch with Redis caching) ---
+export const getPixelsByChunks = async (req, res) => {
+  try {
+    const { chunkIds } = req.body; // Frontend gửi lên: ["1_1", "1_2", "-1_0", ...]
+
+    if (!chunkIds || !Array.isArray(chunkIds) || chunkIds.length === 0) {
+      return res.json([]);
+    }
+
+    // Giới hạn số lượng chunk trong 1 request để tránh quá tải query
+    if (chunkIds.length > 1000) {
+      return res.status(400).json({ error: "Too many chunks requested" });
+    }
+
+    const results = [];
+    const missingChunks = [];
+    const redis = getRedisClient();
+
+    // BƯỚC 1: Kiểm tra Redis Cache (Sử dụng MGET để lấy nhanh)
+    if (redis) {
+      const keys = chunkIds.map(id => {
+        const [x, y] = id.split('_');
+        return `chunk:${x}:${y}`;
+      });
+
+      try {
+        const cachedValues = await redis.mget(keys);
+
+        cachedValues.forEach((val, index) => {
+          if (val) {
+            // Nếu có cache, parse và đẩy vào kết quả
+            results.push(...JSON.parse(val));
+          } else {
+            // Nếu chưa có, đánh dấu để query DB
+            missingChunks.push(chunkIds[index]);
+          }
+        });
+      } catch (redisErr) {
+        console.error("Redis mget error:", redisErr);
+        // Nếu redis lỗi, coi như tất cả đều missing
+        missingChunks.push(...chunkIds);
+      }
+    } else {
+      missingChunks.push(...chunkIds);
+    }
+
+    // BƯỚC 2: Query Database cho các chunk bị thiếu (gom nhóm điều kiện $or)
+    if (missingChunks.length > 0) {
+      const orConditions = missingChunks.map(id => {
+        const [xStr, yStr] = id.split('_');
+        const x = parseInt(xStr, 10);
+        const y = parseInt(yStr, 10);
+
+        if (isNaN(x) || isNaN(y)) return null;
+
+        return {
+          gx: { $gte: x * CHUNK_SIZE, $lt: (x + 1) * CHUNK_SIZE },
+          gy: { $gte: y * CHUNK_SIZE, $lt: (y + 1) * CHUNK_SIZE }
+        };
+      }).filter(Boolean); // Loại bỏ null
+
+      if (orConditions.length > 0) {
+        // Query MongoDB 1 lần duy nhất cho tất cả missing chunks
+        const dbPixels = await Pixel.find({ $or: orConditions })
+            .select('gx gy color userId -_id')
+            .lean();
+
+        results.push(...dbPixels);
+
+        // (Tùy chọn) Có thể cache ngược lại vào Redis ở đây nếu muốn tối ưu lần sau,
+        // nhưng để đơn giản và tránh delay response, ta để lần getChunk lẻ cache sau.
+      }
+    }
+
+    res.json(results);
+
+  } catch (err) {
+    console.error("❌ Lỗi batch chunk:", err);
+    res.status(500).json({ error: "Lỗi server khi tải batch" });
   }
 };

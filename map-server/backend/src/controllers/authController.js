@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import sendEmail from '../utils/sendEmail.js';
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const SESSION_NAME = process.env.SESSION_NAME || 'connect.sid';
 
 // --- HELPER: Tính toán năng lượng ---
 const RECHARGE_RATE_MS = 30 * 1000;
@@ -43,12 +44,11 @@ export const calculateEnergy = async (user) => {
 // PHẦN 1: QUÊN MẬT KHẨU & ĐỔI MẬT KHẨU (OTP)
 // ==========================================
 
-// 1. Gửi mã OTP lấy lại mật khẩu (Kiểm tra Username + Email)
+// 1. Gửi mã OTP lấy lại mật khẩu
 export const forgotPassword = async (req, res) => {
   const { username, email } = req.body;
 
   try {
-    // Kiểm tra User có khớp cả Username và Email không
     const user = await User.findOne({
       email: email.toLowerCase(),
       username: username.toLowerCase()
@@ -58,22 +58,14 @@ export const forgotPassword = async (req, res) => {
       return res.status(404).json({ message: 'Tên đăng nhập và Email không khớp hoặc không tồn tại.' });
     }
 
-    // Tạo mã OTP 6 số ngẫu nhiên
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const resetToken = crypto.createHash('sha256').update(otp).digest('hex');
 
-    // Hash OTP để lưu vào DB
-    const resetToken = crypto
-        .createHash('sha256')
-        .update(otp)
-        .digest('hex');
-
-    // Lưu vào DB (Hết hạn sau 10 phút)
     user.resetPasswordToken = resetToken;
-    user.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
+    user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 phút
 
     await user.save({ validateBeforeSave: false });
 
-    // Gửi Email
     const message = `
       <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 5px;">
         <h2 style="color: #3498db;">Mã xác thực lấy lại mật khẩu</h2>
@@ -106,13 +98,12 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
-// 2. Kiểm tra mã OTP (Dùng để validate trước khi chuyển UI)
+// 2. Kiểm tra mã OTP
 export const verifyOTP = async (req, res) => {
   const { email, otp } = req.body;
 
   try {
     const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
-
     const user = await User.findOne({
       email: email.toLowerCase(),
       resetPasswordToken: hashedOtp,
@@ -135,7 +126,6 @@ export const resetPassword = async (req, res) => {
 
   try {
     const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
-
     const user = await User.findOne({
       email: email.toLowerCase(),
       resetPasswordToken: hashedOtp,
@@ -146,10 +136,7 @@ export const resetPassword = async (req, res) => {
       return res.status(400).json({ message: 'Phiên làm việc hết hạn hoặc mã sai, vui lòng thử lại.' });
     }
 
-    // Cập nhật mật khẩu mới (Middleware pre-save trong User model sẽ hash password)
     user.password = password;
-
-    // Xóa token
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
 
@@ -166,7 +153,7 @@ export const resetPassword = async (req, res) => {
 // PHẦN 2: ĐĂNG KÝ & XÁC THỰC EMAIL
 // ==========================================
 
-// 1. Đăng ký tài khoản (Gửi OTP kích hoạt)
+// 1. Đăng ký tài khoản
 export const registerUser = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ message: errors.array()[0].msg });
@@ -176,15 +163,12 @@ export const registerUser = async (req, res) => {
   if (password !== confirmPassword) return res.status(400).json({ message: 'Mật khẩu không khớp' });
 
   try {
-    // Check tồn tại
     let user = await User.findOne({ $or: [{ email: email.toLowerCase() }, { username: username.toLowerCase() }] });
     if (user) return res.status(400).json({ message: 'Email hoặc Tên đăng nhập đã tồn tại' });
 
-    // Tạo mã OTP kích hoạt
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
 
-    // Tạo user mới (isVerified: false)
     user = new User({
       username: username.toLowerCase(),
       email: email.toLowerCase(),
@@ -197,7 +181,6 @@ export const registerUser = async (req, res) => {
 
     await user.save();
 
-    // Gửi Email
     const message = `
       <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 5px;">
         <h2 style="color: #2ecc71;">Xác thực tài khoản Wplace</h2>
@@ -222,13 +205,12 @@ export const registerUser = async (req, res) => {
   }
 };
 
-// 2. Xác thực Email (Kích hoạt tài khoản)
+// 2. Xác thực Email
 export const verifyEmail = async (req, res) => {
   const { email, otp } = req.body;
 
   try {
     const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
-
     const user = await User.findOne({
       email: email.toLowerCase(),
       verificationToken: hashedOtp,
@@ -239,7 +221,6 @@ export const verifyEmail = async (req, res) => {
       return res.status(400).json({ message: 'Mã xác thực không đúng hoặc đã hết hạn.' });
     }
 
-    // Kích hoạt tài khoản
     user.isVerified = true;
     user.verificationToken = undefined;
     user.verificationExpire = undefined;
@@ -252,8 +233,9 @@ export const verifyEmail = async (req, res) => {
   }
 };
 
+
 // ==========================================
-// PHẦN 3: ĐĂNG NHẬP, ĐĂNG XUẤT, GOOGLE
+// PHẦN 3: ĐĂNG NHẬP, ĐĂNG XUẤT, GOOGLE (ĐÃ SỬA)
 // ==========================================
 
 export const loginUser = async (req, res) => {
@@ -265,28 +247,37 @@ export const loginUser = async (req, res) => {
       return res.status(401).json({ message: 'Tên đăng nhập hoặc mật khẩu không đúng' });
     }
 
-    // KIỂM TRA ĐÃ XÁC THỰC EMAIL CHƯA
     if (!user.isVerified) {
       return res.status(403).json({ message: 'Tài khoản chưa được kích hoạt. Vui lòng kiểm tra email.' });
     }
 
     await calculateEnergy(user);
 
+    // Gán session
     req.session.userId = user._id;
 
-    const userInfo = {
-      _id: user._id,
-      username: user.username,
-      email: user.email,
-      displayName: user.displayName,
-      avatarUrl: user.avatarUrl,
-      teamId: user.teamId || null,
-      energy: user.energy,
-      maxEnergy: user.maxEnergy,
-      lastEnergyUpdate: user.lastEnergyUpdate
-    };
+    // [QUAN TRỌNG] Lưu session thủ công để đảm bảo Cookie được set trước khi trả response
+    req.session.save((err) => {
+      if (err) {
+        console.error("Session save error:", err);
+        return res.status(500).json({ message: 'Lỗi lưu phiên đăng nhập' });
+      }
 
-    res.status(200).json({ message: 'Đăng nhập thành công', user: userInfo });
+      const userInfo = {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        displayName: user.displayName,
+        avatarUrl: user.avatarUrl,
+        teamId: user.teamId || null,
+        energy: user.energy,
+        maxEnergy: user.maxEnergy,
+        lastEnergyUpdate: user.lastEnergyUpdate
+      };
+
+      res.status(200).json({ message: 'Đăng nhập thành công', user: userInfo });
+    });
+
   } catch (error) {
     console.error("Lỗi đăng nhập:", error);
     res.status(500).json({ message: 'Lỗi server' });
@@ -298,7 +289,15 @@ export const logoutUser = (req, res) => {
     if (err) {
       return res.status(500).json({ message: 'Không thể đăng xuất' });
     }
-    res.clearCookie(process.env.SESSION_NAME || 'connect.sid');
+
+    // [QUAN TRỌNG] Xóa cookie với cùng cấu hình như lúc tạo
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.clearCookie(SESSION_NAME, {
+      path: '/',
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax'
+    });
+
     res.status(200).json({ message: 'Đăng xuất thành công' });
   });
 };
@@ -321,12 +320,10 @@ export const googleLogin = async (req, res) => {
       if (!user.googleId) {
         user.googleId = googleId;
         if (!user.avatarUrl) user.avatarUrl = picture;
-        // Nếu đã có tài khoản cũ nhưng chưa verify -> Verify luôn vì đã login qua Google
         if (!user.isVerified) user.isVerified = true;
         await user.save();
       }
     } else {
-      // User mới qua Google -> Auto Verified
       const randomPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
       let baseUsername = name.replace(/\s/g, '').toLowerCase();
       let username = baseUsername;
@@ -344,7 +341,7 @@ export const googleLogin = async (req, res) => {
         displayName: name,
         avatarUrl: picture,
         googleId: googleId,
-        isVerified: true // Google user tự động kích hoạt
+        isVerified: true
       });
 
       await user.save();
@@ -353,6 +350,54 @@ export const googleLogin = async (req, res) => {
     await calculateEnergy(user);
 
     req.session.userId = user._id;
+
+    // [QUAN TRỌNG] Lưu session thủ công
+    req.session.save((err) => {
+      if (err) {
+        console.error("Session save error (Google):", err);
+        return res.status(500).json({ message: 'Lỗi lưu phiên đăng nhập Google' });
+      }
+
+      const userInfo = {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        displayName: user.displayName,
+        avatarUrl: user.avatarUrl,
+        teamId: user.teamId || null,
+        energy: user.energy,
+        maxEnergy: user.maxEnergy,
+        lastEnergyUpdate: user.lastEnergyUpdate
+      };
+
+      res.status(200).json({ message: 'Đăng nhập Google thành công', user: userInfo });
+    });
+
+  } catch (error) {
+    console.error("Lỗi Google Login:", error);
+    res.status(400).json({ message: 'Đăng nhập Google thất bại', error: error.message });
+  }
+};
+
+// [NEW] API Lấy thông tin user hiện tại (thay thế cho /me)
+export const getCurrentUser = async (req, res) => {
+  // Middleware 'protect' đã kiểm tra và gắn user vào req.user
+  // Nhưng req.session.userId là nguồn tin cậy hơn
+  if (!req.session || !req.session.userId) {
+    return res.status(401).json({ message: "Chưa đăng nhập" });
+  }
+
+  try {
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      // Hủy session nếu user không còn tồn tại
+      req.session.destroy();
+      res.clearCookie(SESSION_NAME);
+      return res.status(401).json({ message: "Phiên đăng nhập không hợp lệ" });
+    }
+
+    // Tính lại năng lượng trước khi trả về
+    await calculateEnergy(user);
 
     const userInfo = {
       _id: user._id,
@@ -366,10 +411,10 @@ export const googleLogin = async (req, res) => {
       lastEnergyUpdate: user.lastEnergyUpdate
     };
 
-    res.status(200).json({ message: 'Đăng nhập Google thành công', user: userInfo });
+    res.status(200).json(userInfo);
 
   } catch (error) {
-    console.error("Lỗi Google Login:", error);
-    res.status(400).json({ message: 'Đăng nhập Google thất bại', error: error.message });
+    console.error("Lỗi lấy user hiện tại:", error);
+    res.status(500).json({ message: "Lỗi server" });
   }
 };
