@@ -1,3 +1,5 @@
+// map-server/backend/src/workers/outboxPublisher.js
+
 import Outbox from '../models/Outbox.js';
 import { getPublisher, STREAMS, isRedisEnabled } from '../config/redis.js';
 

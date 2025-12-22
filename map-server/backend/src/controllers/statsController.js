@@ -1,3 +1,4 @@
+// map-server/backend/src/controllers/statsController.js
 import PixelEvent from '../models/PixelEvent.js';
 import { redis } from '../config/redis.js';
 

@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import html2canvas from 'html2canvas';
 
 /* ================= COMPONENTS ================= */
 import GlobalCanvasGrid from './components/GlobalCanvasGrid.jsx';
@@ -29,9 +28,9 @@ import OverlayMapHandler from './components/OverlayMapHandler.jsx';
 import PingLayer from './components/PingLayer.jsx';
 import ChatBox from './components/ChatBox.jsx';
 import HeatmapLayer from './components/HeatmapLayer.jsx';
-import AdminManager from './components/AdminManager.jsx';
-import AppealModal from './components/AppealModal.jsx';
 import AdminAreaSelector from './components/AdminAreaSelector.jsx';
+import AdminManager from './components/AdminManager.jsx'; 
+import AppealModal from './components/AppealModal.jsx';
 
 /* Store & Challenge */
 import ChallengePanel from './components/ChallengePanel.jsx';
@@ -46,6 +45,7 @@ import { getPixelDetail } from './services/pixelApi';
 /* ================= CONFIG ================= */
 import {
   WORLD_BOUNDS,
+  VISUAL_BOUNDS,
   MIN_ZOOM_TO_SHOW_PIXELS,
   GRID_WIDTH,
   GRID_HEIGHT
@@ -93,9 +93,12 @@ const MapInitializer = () => {
     if (initialized.current) return;
 
     const fit = () => {
-      const z = map.getBoundsZoom(WORLD_BOUNDS, false);
+      const z = map.getBoundsZoom(WORLD_BOUNDS, true);
       map.setMinZoom(z);
-      map.fitBounds(WORLD_BOUNDS, { animate: false });
+      map.setMaxBounds(VISUAL_BOUNDS);
+      if (map.getZoom() < z) {
+          map.setView([0, 0], z, { animate: false });
+      }
       initialized.current = true;
     };
 
@@ -132,45 +135,20 @@ const AuthControls = () => {
   return (
       <div className="absolute top-4 right-4 z-[1200] auth-controls-ignore">
         {isLoggedIn && user ? <Profile /> : (
-            <button onClick={openAuthModal}
-                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
-              Đăng nhập
-            </button>
+            <button onClick={openAuthModal} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Đăng nhập</button>
         )}
       </div>
   );
 };
 
-const AuxiliaryButtons = ({
-                            openLeaderboard,
-                            openTeamModal,
-                            currentTeam,
-                            openStore,
-                            isHeatmapOn,
-                            setIsHeatmapOn
-                          }) => (
+const AuxiliaryButtons = ({ openLeaderboard, openTeamModal, currentTeam, openStore, isHeatmapOn, setIsHeatmapOn }) => (
     <div className="absolute top-16 right-4 z-[1000] flex flex-col gap-3 items-end aux-buttons-ignore">
-      <button
-          onClick={() => setIsHeatmapOn(!isHeatmapOn)}
-          className={`px-4 py-2 rounded-lg font-bold ${
-              isHeatmapOn ? 'bg-red-500 text-white' : 'bg-white text-gray-700'
-          }`}
-      >
+      <button onClick={() => setIsHeatmapOn(!isHeatmapOn)} className={`px-4 py-2 rounded-lg font-bold ${isHeatmapOn ? 'bg-red-500 text-white' : 'bg-white text-gray-700'}`}>
         {isHeatmapOn ? '🔥 Tắt nhiệt' : '🌡️ Bản đồ nhiệt'}
       </button>
-
-      {currentTeam
-          ? <TeamBadge currentTeam={currentTeam} onClick={openTeamModal} />
-          : <button onClick={openTeamModal} className="px-4 py-2 bg-purple-500 text-white rounded-lg">Team</button>
-      }
-
-      <button onClick={openLeaderboard} className="px-4 py-2 bg-yellow-500 text-white rounded-lg">
-        Leaderboard
-      </button>
-
-      <button onClick={openStore} className="px-4 py-2 bg-indigo-600 text-white rounded-lg">
-        💧 Store
-      </button>
+      {currentTeam ? <TeamBadge currentTeam={currentTeam} onClick={openTeamModal} /> : <button onClick={openTeamModal} className="px-4 py-2 bg-purple-500 text-white rounded-lg">Team</button>}
+      <button onClick={openLeaderboard} className="px-4 py-2 bg-yellow-500 text-white rounded-lg">Leaderboard</button>
+      <button onClick={openStore} className="px-4 py-2 bg-indigo-600 text-white rounded-lg">💧 Store</button>
     </div>
 );
 
@@ -184,39 +162,84 @@ const App = () => {
   const [selectedPixelColor, setSelectedPixelColor] = useState('#000000');
   const [pendingPixels, setPendingPixels] = useState([]);
   const [isPaletteVisible, setIsPaletteVisible] = useState(false);
+  
   const [pixelInfo, setPixelInfo] = useState(null);
   const [isPixelInfoModalOpen, setIsPixelInfoModalOpen] = useState(false);
-  const [shareData, setShareData] = useState(null);
+  
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
-  const [zoomWarning, setZoomWarning] = useState(null);
   const [favorites, setFavorites] = useState([]);
   const [isHeatmapOn, setIsHeatmapOn] = useState(false);
   const [isStoreOpen, setIsStoreOpen] = useState(false);
   const [isWipeMode, setIsWipeMode] = useState(false);
   const [isAppealModalOpen, setIsAppealModalOpen] = useState(false);
 
-  /* ===== render ===== */
+  const [isSoundOpen, setIsSoundOpen] = useState(false);
+  const [isOverlayOpen, setIsOverlayOpen] = useState(false);
+  const [showZoomWarning, setShowZoomWarning] = useState(false);
+
+  // --- STATE ĐỂ QUẢN LÝ XEM CHI TIẾT TEAM ---
+  const [viewingTeamId, setViewingTeamId] = useState(null);
+
+  const handlePixelClick = async ({ gx, gy }) => {
+    try {
+      const detail = await getPixelDetail(gx, gy);
+      setPixelInfo(detail);
+      setIsPixelInfoModalOpen(true);
+    } catch (err) { console.error("Lỗi lấy thông tin pixel:", err); }
+  };
+
+  const handleStartPaint = () => {
+    if (!pixelInfo) return;
+    setPendingPixels(prev => {
+        const exists = prev.some(p => p.gx === pixelInfo.gx && p.gy === pixelInfo.gy);
+        if (exists) return prev;
+        return [...prev, { gx: pixelInfo.gx, gy: pixelInfo.gy, color: selectedPixelColor }];
+    });
+    setIsPixelInfoModalOpen(false);
+    setIsPaletteVisible(true);
+  };
+
+  // --- HÀM XỬ LÝ KHI CLICK TEAM TRÊN LEADERBOARD ---
+  const handleViewTeamDetails = (teamId) => {
+    setViewingTeamId(teamId); // Lưu ID team cần xem
+    setIsLeaderboardOpen(false); // Đóng leaderboard
+    setIsTeamModalOpen(true); // Mở modal team
+  };
+
+  // --- HÀM ĐÓNG TEAM MODAL ---
+  const handleCloseTeamModal = () => {
+    setIsTeamModalOpen(false);
+    setViewingTeamId(null); // Reset lại trạng thái
+  };
+
   return (
       <div style={{ height: '100vh', width: '100vw', position: 'relative' }}>
         {isAuthModalOpen && <AuthModal onClose={closeAuthModal} />}
         {isVerificationRequired && <VerificationModal />}
         {isAppealModalOpen && <AppealModal onClose={() => setIsAppealModalOpen(false)} />}
 
+        {isPixelInfoModalOpen && pixelInfo && (
+            <PixelInfoModal pixel={pixelInfo} onClose={() => setIsPixelInfoModalOpen(false)} onStartMultiPaint={handleStartPaint} />
+        )}
+
+        {showZoomWarning && (
+            <ZoomWarningToast message="🔍 Phóng to thêm để tô màu!" onClose={() => setShowZoomWarning(false)} />
+        )}
+
         <div id="map-capture-area" style={{ height: '100%' }}>
           <MapContainer
               center={[0, 0]}
-              zoom={2}
+              zoom={3}
               maxZoom={20}
-              style={{ height: '100%' }}
-              worldCopyJump
+              style={{ height: '100%', backgroundColor: '#aad3df' }}
+              worldCopyJump={true}
               preferCanvas
+              maxBounds={VISUAL_BOUNDS} 
+              maxBoundsViscosity={1.0}
           >
-            <TileLayer
-                url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
-                attribution="&copy; Google Maps"
-            />
-
+            <TileLayer url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" attribution="&copy; Google Maps" />
+            
             <MapUrlHandler />
             <MapInitializer />
             <LocationButton />
@@ -226,26 +249,25 @@ const App = () => {
             <OverlayMapHandler />
             <PingLayer currentTeamId={currentTeam?._id} />
             <HeatmapLayer visible={isHeatmapOn} />
-
-            <AdminAreaSelector
-                isActive={isWipeMode}
-                onComplete={() => setIsWipeMode(false)}
-                onCancel={() => setIsWipeMode(false)}
-            />
+            <AdminAreaSelector isActive={isWipeMode} onComplete={() => setIsWipeMode(false)} onCancel={() => setIsWipeMode(false)} />
 
             <GlobalCanvasGrid
                 selectedPixelColor={selectedPixelColor}
                 pendingPixels={pendingPixels}
                 setPendingPixels={setPendingPixels}
                 canPaint={canPaint}
+                onZoomWarning={() => setShowZoomWarning(true)}
+                isPaletteVisible={isPaletteVisible}
+                onPixelClickForInfo={handlePixelClick}
+                pixelInfo={pixelInfo}
             />
-
             <FavoriteMarkers favorites={favorites} />
           </MapContainer>
         </div>
 
         <ChatBox />
         <AuthControls />
+        <AdminManager onStartWipe={() => setIsWipeMode(true)} />
 
         <AuxiliaryButtons
             openLeaderboard={() => setIsLeaderboardOpen(true)}
@@ -255,6 +277,27 @@ const App = () => {
             isHeatmapOn={isHeatmapOn}
             setIsHeatmapOn={setIsHeatmapOn}
         />
+
+        <SoundSettings isOpen={isSoundOpen} onToggle={() => setIsSoundOpen(!isSoundOpen)} />
+        <OverlayMenu isOpen={isOverlayOpen} onToggle={() => setIsOverlayOpen(!isOverlayOpen)} />
+
+        {/* --- CẬP NHẬT LEADERBOARD & TEAM MODAL --- */}
+        {isLeaderboardOpen && (
+            <Leaderboard 
+                isOpen={isLeaderboardOpen} 
+                onClose={() => setIsLeaderboardOpen(false)} 
+                onTeamClick={handleViewTeamDetails} // Truyền hàm xử lý
+            />
+        )}
+        
+        {isTeamModalOpen && (
+            <TeamModal 
+                isOpen={isTeamModalOpen} 
+                onClose={handleCloseTeamModal} // Dùng hàm đóng mới
+                teamId={viewingTeamId} // Truyền ID team cần xem
+                mode={viewingTeamId ? 'details' : 'list'} // Nếu có ID thì mở thẳng vào chi tiết
+            />
+        )}
 
         <ChallengePanel />
         <Store isOpen={isStoreOpen} onClose={() => setIsStoreOpen(false)} />
@@ -266,6 +309,10 @@ const App = () => {
                 pendingPixels={pendingPixels}
                 setPendingPixels={setPendingPixels}
                 canPaint={canPaint}
+                onLoginRequired={openAuthModal}
+                isPaletteVisible={isPaletteVisible}
+                setIsPaletteVisible={setIsPaletteVisible}
+                isPixelInfoModalOpen={isPixelInfoModalOpen}
             />
         )}
       </div>

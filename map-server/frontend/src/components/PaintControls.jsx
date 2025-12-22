@@ -1,3 +1,5 @@
+// frontend/src/components/PaintControls.jsx
+
 import React, { useState, useEffect, useCallback } from "react";
 import "./PaintControls.css";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -55,18 +57,31 @@ const PaintControls = ({ selectedPixelColor, setSelectedPixelColor, pendingPixel
     const finalColor = color === CLEAR_COLOR ? "transparent" : color;
     setSelectedPixelColor(finalColor);
     localStorage.setItem("last_selected_color", finalColor);
+    
+    // --- 3. Âm thanh khi chọn màu ---
     playSound('color'); 
+    
     setPendingPixels((prev) => prev.length === 1 ? prev.map((p) => ({ ...p, color: finalColor })) : prev);
   };
 
   const handleConfirmPaint = async () => {
     if (isSubmitting) return;
-    if (pendingPixels.length === 0) { playSound('error'); alert("Chọn ít nhất 1 pixel."); return; }
-    if (pendingPixels.length > energy) { playSound('error'); alert(`Thiếu năng lượng! Cần ${pendingPixels.length}, có ${energy}.`); return; }
+    
+    // --- 4. Kiểm tra năng lượng ---
+    if (pendingPixels.length > energy) {
+        playSound('error');
+        alert(`❌ Quá tải! Bạn định tô ${pendingPixels.length} pixel nhưng chỉ còn ${energy} năng lượng.`);
+        return;
+    }
+
+    if (pendingPixels.length === 0) { 
+        playSound('error'); 
+        alert("Chọn ít nhất 1 pixel."); 
+        return; 
+    }
 
     setIsSubmitting(true);
     try {
-      // --- TỐI ƯU HÓA: Gửi mảng pixel (Batch Request) ---
       const payload = {
           pixels: pendingPixels.map(p => ({ gx: p.gx, gy: p.gy, color: p.color }))
       };

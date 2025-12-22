@@ -1,3 +1,5 @@
+// map-server/backend/src/controllers/adminController.js
+
 import User from '../models/User.js';
 import Pixel from '../models/Pixel.js';
 import Team from '../models/Team.js';

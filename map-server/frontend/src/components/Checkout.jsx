@@ -1,3 +1,4 @@
+// map-server/frontend/src/components/Checkout.jsx
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { loadStripe } from '@stripe/stripe-js';

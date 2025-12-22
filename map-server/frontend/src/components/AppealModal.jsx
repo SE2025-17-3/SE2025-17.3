@@ -1,3 +1,4 @@
+// map-server/frontend/src/components/AppealModal.jsx
 import React, { useState } from 'react';
 import api from '../services/api';
 

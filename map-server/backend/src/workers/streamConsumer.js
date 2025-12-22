@@ -1,3 +1,5 @@
+// map-server/backend/src/workers/streamConsumer.js
+
 import {
   getSubscriber,
   STREAMS,
@@ -9,16 +11,20 @@ import {
  * Redis Stream Consumer
  * Consumes pixel events from Redis Stream and broadcasts to Socket.IO clients
  * Uses consumer groups for reliability and scalability
+ * OPTIMIZED: Uses batching to reduce socket emission overhead
  */
 class StreamConsumer {
   constructor(io, options = {}) {
     this.io = io;
     this.consumerName = options.consumerName || `consumer-${process.pid}`;
     this.blockTime = options.blockTime || 1000; // ms
-    this.batchSize = options.batchSize || 10;
+    this.batchSize = options.batchSize || 50; // Tăng batch size để đọc nhiều hơn mỗi lần
     this.isRunning = false;
     this.redis = null;
     this.enabled = isRedisEnabled();
+    
+    // Buffer để gom pixel trước khi gửi
+    this.emitBuffer = [];
   }
 
   /* ===================== INIT CONSUMER GROUP ===================== */
@@ -130,7 +136,7 @@ class StreamConsumer {
   async readNewMessages() {
     const results = await this.redis.xreadgroup(
         'GROUP',
-        CONSUMER_GROUPS.PIXEL_BROADERS ?? CONSUMER_GROUPS.PIXEL_BROADCASTERS,
+        CONSUMER_GROUPS.PIXEL_BROADCASTERS,
         this.consumerName,
         'COUNT',
         this.batchSize,
@@ -148,18 +154,20 @@ class StreamConsumer {
     }
   }
 
-  /* ===================== PROCESS ===================== */
+  /* ===================== PROCESS (BATCH OPTIMIZED) ===================== */
   async processMessages(messages) {
     for (const [messageId, fields] of messages) {
       try {
         const data = this.parseMessageFields(fields);
 
-        this.io.emit('pixel_placed', {
+        // Thay vì emit ngay, ta đẩy vào buffer
+        this.emitBuffer.push({
           gx: parseInt(data.gx, 10),
           gy: parseInt(data.gy, 10),
           color: data.color,
         });
 
+        // Xác nhận đã xử lý xong với Redis
         await this.redis.xack(
             STREAMS.PIXEL_EVENTS,
             CONSUMER_GROUPS.PIXEL_BROADCASTERS,
@@ -168,6 +176,19 @@ class StreamConsumer {
       } catch (err) {
         console.error(`❌ Error processing message ${messageId}:`, err);
       }
+    }
+
+    // Sau khi xử lý hết đợt tin nhắn này, gửi 1 lần xuống Client
+    this.flushBuffer();
+  }
+
+  flushBuffer() {
+    if (this.emitBuffer.length > 0) {
+      // Gửi sự kiện mới 'pixel_update_batch' chứa mảng pixel
+      this.io.emit('pixel_update_batch', this.emitBuffer);
+      
+      // Xóa buffer
+      this.emitBuffer = [];
     }
   }
 

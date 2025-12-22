@@ -1,3 +1,5 @@
+// map-server/frontend/src/components/GlobalCanvasGrid.jsx
+
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useMap } from "react-leaflet";
 import L from "leaflet";
@@ -7,6 +9,8 @@ import api from "../services/api";
 import { useSound } from "../context/SoundContext";
 import { useOverlay } from "../context/OverlayContext"; 
 import { useTeam } from "../context/TeamContext"; 
+// --- THÊM IMPORT useAuth ---
+import { useAuth } from "../context/AuthContext";
 
 const GlobalCanvasGrid = ({ selectedPixelColor, pendingPixels, setPendingPixels, onPixelClickForInfo, pixelInfo, canPaint, onZoomWarning, isPaletteVisible }) => {
     const map = useMap();
@@ -14,14 +18,31 @@ const GlobalCanvasGrid = ({ selectedPixelColor, pendingPixels, setPendingPixels,
     const { playSound } = useSound();
     const { isPickingMode } = useOverlay(); 
     const { currentTeam } = useTeam(); 
+    // --- LẤY USER ĐỂ TÍNH NĂNG LƯỢNG ---
+    const { user } = useAuth();
     
-    const [pixels, setPixels] = useState(new Map());
-    const [hovered, setHovered] = useState(null);
+    const pixelsRef = useRef(new Map());
+    const hoveredRef = useRef(null);
     const canvasRef = useRef(null);
+    const [, setForceUpdate] = useState(0); 
+
     const loadedChunksRef = useRef(new Set());
     const abortControllerRef = useRef(null);
     const animationFrameId = useRef(null);
     const maxPendingPixels = 64;
+
+    // Helper tính năng lượng thời gian thực (giống PaintControls)
+    const getCurrentEnergy = () => {
+        if (!user) return 0;
+        const lastUpdate = new Date(user.lastEnergyUpdate).getTime();
+        const now = Date.now();
+        if (isNaN(lastUpdate)) return user.energy;
+        
+        const RECHARGE_RATE_MS = 30 * 1000;
+        const elapsedMs = now - lastUpdate;
+        const gained = Math.floor(elapsedMs / RECHARGE_RATE_MS);
+        return Math.min(user.maxEnergy, user.energy + gained);
+    };
 
     const latLngToGrid = useCallback((latlng) => {
         const wrappedLng = L.Util.wrapNum(latlng.lng, [-180, 180], true);
@@ -44,37 +65,75 @@ const GlobalCanvasGrid = ({ selectedPixelColor, pendingPixels, setPendingPixels,
                 return;
             }
 
+            // Logic khi đang tô màu (đã mở bảng màu hoặc đang chọn)
             if (pendingPixels.length > 0 || isPaletteVisible) {
                 if (!canPaint) { playSound('error'); if (onZoomWarning) onZoomWarning(); return; }
+
+                // --- LOGIC KIỂM TRA NĂNG LƯỢNG MỚI ---
+                const currentEnergy = getCurrentEnergy();
+                
+                // Kiểm tra xem pixel này đã được chọn chưa
+                const isAlreadySelected = pendingPixels.some(p => p.gx === gx && p.gy === gy);
+
+                // 1. Nếu chưa chọn pixel này, mà năng lượng = 0 -> Báo lỗi
+                if (!isAlreadySelected && currentEnergy <= 0) {
+                    playSound('error');
+                    alert("Hãy chờ hồi năng lượng!");
+                    return;
+                }
+
+                // 2. Nếu chưa chọn pixel này, mà số lượng đã chọn >= năng lượng hiện có -> Báo lỗi
+                if (!isAlreadySelected && pendingPixels.length >= currentEnergy) {
+                    playSound('error');
+                    alert(`Quá số lượng pixel có thể tô! (Năng lượng: ${currentEnergy})`);
+                    return;
+                }
+                // ----------------------------------------
+
                 playSound('click'); 
                 setPendingPixels((prev) => {
                     const existingIndex = prev.findIndex((p) => p.gx === gx && p.gy === gy);
                     if (existingIndex !== -1) {
+                        // Nếu click lại vào pixel đã chọn -> cập nhật màu mới
                         if (prev[existingIndex].color === selectedPixelColor) return prev;
                         const newPending = [...prev];
                         newPending[existingIndex] = { ...prev[existingIndex], color: selectedPixelColor };
                         return newPending;
                     } else {
-                        if (prev.length < maxPendingPixels) { return [...prev, { gx, gy, color: selectedPixelColor }]; } 
-                        else { playSound('error'); alert("Đạt giới hạn chọn."); return prev; }
+                        // Thêm pixel mới vào danh sách
+                        if (prev.length < maxPendingPixels) { 
+                            return [...prev, { gx, gy, color: selectedPixelColor }]; 
+                        } else { 
+                            playSound('error'); 
+                            alert("Đạt giới hạn chọn tối đa (64)."); 
+                            return prev; 
+                        }
                     }
                 });
             } else {
-                if (canPaint) { playSound('click'); onPixelClickForInfo({ gx, gy }); } 
+                // Xem thông tin pixel
+                if (canPaint) { 
+                    playSound('click'); 
+                    if (onPixelClickForInfo) onPixelClickForInfo({ gx, gy }); 
+                } 
                 else { playSound('error'); if (onZoomWarning) onZoomWarning(); }
             }
-        }, [canPaint, latLngToGrid, pendingPixels, selectedPixelColor, setPendingPixels, onPixelClickForInfo, onZoomWarning, isPaletteVisible, playSound, isPickingMode, currentTeam, socket]
+        }, [canPaint, latLngToGrid, pendingPixels, selectedPixelColor, setPendingPixels, onPixelClickForInfo, onZoomWarning, isPaletteVisible, playSound, isPickingMode, currentTeam, socket, user] 
     );
 
     const handleMove = useCallback((e) => {
-        if (!canPaint || map.getZoom() < MIN_ZOOM_TO_SHOW_PIXELS) { if (hovered !== null) setHovered(null); return; }
+        if (!canPaint || map.getZoom() < MIN_ZOOM_TO_SHOW_PIXELS) { 
+            hoveredRef.current = null;
+            return; 
+        }
         const gridPos = latLngToGrid(e.latlng);
-        setHovered((prev) => { if (prev && prev.gx === gridPos.gx && prev.gy === gridPos.gy) return prev; return gridPos; });
-    }, [canPaint, latLngToGrid, hovered, map]);
+        hoveredRef.current = gridPos;
+    }, [canPaint, latLngToGrid, map]);
 
     const loadVisibleChunks = useCallback(async () => {
         const zoom = map.getZoom();
         if (zoom < MIN_ZOOM_TO_SHOW_PIXELS) return;
+        
         if (abortControllerRef.current) abortControllerRef.current.abort();
         abortControllerRef.current = new AbortController();
         const signal = abortControllerRef.current.signal;
@@ -86,6 +145,7 @@ const GlobalCanvasGrid = ({ selectedPixelColor, pendingPixels, setPendingPixels,
         let endX = Math.floor(se.gx / CHUNK_SIZE);
         const chunkY_min = Math.floor(nw.gy / CHUNK_SIZE);
         const chunkY_max = Math.floor(se.gy / CHUNK_SIZE);
+        
         const totalChunksX = Math.ceil(GRID_WIDTH / CHUNK_SIZE);
         if (endX < startX) { startX = 0; endX = totalChunksX - 1; }
 
@@ -93,32 +153,47 @@ const GlobalCanvasGrid = ({ selectedPixelColor, pendingPixels, setPendingPixels,
         for (let x = startX; x <= endX; x++) {
             for (let y = chunkY_min; y <= chunkY_max; y++) {
                 const chunkKey = `${x}:${y}`;
-                loadedChunksRef.current.add(chunkKey);
-                chunksToLoad.push({ x, y, key: chunkKey });
+                if (!loadedChunksRef.current.has(chunkKey)) {
+                    loadedChunksRef.current.add(chunkKey);
+                    chunksToLoad.push({ x, y, key: chunkKey });
+                }
             }
         }
+        
         if (chunksToLoad.length === 0) return;
 
-        try {
-            const promises = chunksToLoad.map(({ x, y }) =>
-                api.get(`/pixels/chunk/${x}/${y}`, { signal }).then(res => res.data).catch(err => null)
-            );
-            const results = await Promise.all(promises);
-            const newPixels = new Map();
-            let pixelCount = 0;
-            results.forEach(chunkData => {
-                if (Array.isArray(chunkData)) {
-                    chunkData.forEach(p => { newPixels.set(`${p.gx}:${p.gy}`, p.color); pixelCount++; });
-                }
-            });
-            if (pixelCount > 0) {
-                setPixels(prev => {
-                    const merged = new Map(prev);
-                    newPixels.forEach((val, key) => merged.set(key, val));
-                    return merged;
+        const BATCH_SIZE = 10;
+        
+        const processBatch = async (batch) => {
+            try {
+                const promises = batch.map(({ x, y }) =>
+                    api.get(`/pixels/chunk/${x}/${y}`, { signal })
+                       .then(res => res.data)
+                       .catch(err => {
+                           if (err.response && err.response.status !== 404 && err.name !== 'CanceledError') {
+                               console.warn(`Failed chunk ${x},${y}`);
+                           }
+                           return null;
+                       })
+                );
+                
+                const results = await Promise.all(promises);
+                results.forEach(chunkData => {
+                    if (Array.isArray(chunkData)) {
+                        chunkData.forEach(p => { 
+                            pixelsRef.current.set(`${p.gx}:${p.gy}`, p.color);
+                        });
+                    }
                 });
-            }
-        } catch (error) { console.error("Error loading chunks:", error); }
+            } catch (err) {}
+        };
+
+        for (let i = 0; i < chunksToLoad.length; i += BATCH_SIZE) {
+            if (signal.aborted) break;
+            const batch = chunksToLoad.slice(i, i + BATCH_SIZE);
+            await processBatch(batch);
+        }
+
     }, [map, latLngToGrid]);
 
     useEffect(() => {
@@ -134,40 +209,42 @@ const GlobalCanvasGrid = ({ selectedPixelColor, pendingPixels, setPendingPixels,
         };
     }, [map, handleInteraction, handleMove, loadVisibleChunks]);
 
-    // --- SOCKET LOGIC (CẬP NHẬT MỚI: NGHE LỆNH AREA_WIPED) ---
     useEffect(() => {
         const handleNewPixel = (newPixel) => {
             if (newPixel && typeof newPixel.gx === "number" && typeof newPixel.gy === "number") {
-                setPixels((prev) => {
-                    const newMap = new Map(prev);
-                    if (newPixel.color === 'transparent') { newMap.delete(`${newPixel.gx}:${newPixel.gy}`); } 
-                    else { newMap.set(`${newPixel.gx}:${newPixel.gy}`, newPixel.color); }
-                    return newMap;
+                if (newPixel.color === 'transparent') pixelsRef.current.delete(`${newPixel.gx}:${newPixel.gy}`);
+                else pixelsRef.current.set(`${newPixel.gx}:${newPixel.gy}`, newPixel.color);
+            }
+        };
+
+        const handleBatchPixels = (batchData) => {
+            if (Array.isArray(batchData)) {
+                batchData.forEach(p => {
+                    if (p.color === 'transparent') pixelsRef.current.delete(`${p.gx}:${p.gy}`);
+                    else pixelsRef.current.set(`${p.gx}:${p.gy}`, p.color);
                 });
             }
         };
 
         const handleAreaWiped = ({ minX, maxX, minY, maxY }) => {
-            console.log("🧹 Area wiped:", { minX, maxX, minY, maxY });
-            setPixels((prev) => {
-                const newMap = new Map(prev);
-                for (const key of prev.keys()) {
-                    const [gxStr, gyStr] = key.split(':');
-                    const gx = parseInt(gxStr);
-                    const gy = parseInt(gyStr);
-                    // Xóa nếu nằm trong vùng wipe
-                    if (gx >= minX && gx <= maxX && gy >= minY && gy <= maxY) {
-                        newMap.delete(key);
-                    }
+            for (const key of pixelsRef.current.keys()) {
+                const [gxStr, gyStr] = key.split(':');
+                const gx = parseInt(gxStr);
+                const gy = parseInt(gyStr);
+                if (gx >= minX && gx <= maxX && gy >= minY && gy <= maxY) {
+                    pixelsRef.current.delete(key);
                 }
-                return newMap;
-            });
+            }
+            setForceUpdate(prev => prev + 1);
         };
 
         socket.on("pixel_placed", handleNewPixel);
-        socket.on("area_wiped", handleAreaWiped); // <-- Listener mới
+        socket.on("pixel_update_batch", handleBatchPixels);
+        socket.on("area_wiped", handleAreaWiped);
+        
         return () => {
             socket.off("pixel_placed", handleNewPixel);
+            socket.off("pixel_update_batch", handleBatchPixels);
             socket.off("area_wiped", handleAreaWiped);
         };
     }, [socket]);
@@ -192,6 +269,7 @@ const GlobalCanvasGrid = ({ selectedPixelColor, pendingPixels, setPendingPixels,
             ctx.moveTo(x + w, y + h - L); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w - L, y + h);
             ctx.moveTo(x, y + h - L); ctx.lineTo(x, y + h); ctx.lineTo(x + L, y + h);
         };
+        
         const getPixelGeometry = (gx, gy) => {
             const north = WORLD_BOUNDS.getNorth();
             const south = WORLD_BOUNDS.getSouth();
@@ -212,43 +290,50 @@ const GlobalCanvasGrid = ({ selectedPixelColor, pendingPixels, setPendingPixels,
         const drawCanvas = () => {
             const zoom = map.getZoom();
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (zoom < MIN_ZOOM_TO_SHOW_PIXELS) return;
+            
+            if (zoom < MIN_ZOOM_TO_SHOW_PIXELS) {
+                animationFrameId.current = requestAnimationFrame(drawCanvas);
+                return;
+            }
 
-            pixels.forEach((color, key) => {
-                if (color === 'transparent') return;
-                const [gx, gy] = key.split(":").map(Number);
+            for (const [key, color] of pixelsRef.current) {
+                if (color === 'transparent') continue;
+                const splitIdx = key.indexOf(':');
+                const gx = parseInt(key.substring(0, splitIdx));
+                const gy = parseInt(key.substring(splitIdx + 1));
+
                 const { x, y, wFill, hFill } = getPixelGeometry(gx, gy);
                 if (x > -100 && y > -100 && x < canvas.width + 100 && y < canvas.height + 100) {
                     ctx.fillStyle = color;
                     ctx.fillRect(x, y, wFill, hFill);
                 }
-            });
+            }
+
             pendingPixels.forEach(({ gx, gy, color }) => {
                 const { x, y, w, h, wFill, hFill } = getPixelGeometry(gx, gy);
                 if (color !== 'transparent') { ctx.fillStyle = color; ctx.fillRect(x, y, wFill, hFill); }
                 if (w >= 0.5) drawBracketCursor(ctx, x, y, w, h, "#007BFF");
             });
+
             if (pixelInfo && !pendingPixels.length && canPaint) {
                 const { x, y, w, h } = getPixelGeometry(pixelInfo.gx, pixelInfo.gy);
                 if (w >= 0.5) drawBracketCursor(ctx, x, y, w, h, "#FF0000");
             }
-            if (hovered) {
-                const { x, y, w, h } = getPixelGeometry(hovered.gx, hovered.gy);
+
+            if (hoveredRef.current) {
+                const { gx, gy } = hoveredRef.current;
+                const { x, y, w, h } = getPixelGeometry(gx, gy);
                 if (w >= 0.5) drawBracketCursor(ctx, x, y, w, h, "rgba(0, 0, 0, 0.5)");
             }
-        };
 
-        const onMapUpdate = () => {
-            if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
             animationFrameId.current = requestAnimationFrame(drawCanvas);
         };
-        map.on("move zoom moveend zoomend", onMapUpdate);
-        onMapUpdate();
+
+        drawCanvas();
         return () => {
-            map.off("move zoom moveend zoomend", onMapUpdate);
             if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
         };
-    }, [map, pixels, pendingPixels, pixelInfo, hovered, canPaint]);
+    }, [map, pendingPixels, pixelInfo, canPaint]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -257,7 +342,6 @@ const GlobalCanvasGrid = ({ selectedPixelColor, pendingPixels, setPendingPixels,
                 const mapContainer = map.getContainer();
                 canvas.width = mapContainer.clientWidth;
                 canvas.height = mapContainer.clientHeight;
-                if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
             }
         };
         updateCanvasSize();
