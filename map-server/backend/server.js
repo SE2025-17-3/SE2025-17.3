@@ -8,6 +8,7 @@ import { connectDB } from './src/config/db.js';
 import app from './src/app.js';
 import { getOutboxPublisher } from './src/workers/outboxPublisher.js';
 import StreamConsumer from './src/workers/streamConsumer.js';
+import NotificationConsumer from './src/workers/notificationConsumer.js';
 import { closeAllRedisConnections } from './src/config/redis.js';
 import { initializeStripe } from './src/config/stripe.js';
 
@@ -74,11 +75,12 @@ io.use(wrap(session(sessionConfig)));
 io.on('connection', (socket) => {
   // console.log('🟢 Client đã kết nối:', socket.id);
   
-  // Join user to their personal room for targeted notifications
+  // Join user to their personal rooms for targeted notifications
   const userId = socket.request.session?.userId;
   if (userId) {
-    socket.join(`user:${userId}`);
-    console.log(`👤 User ${userId} joined personal room`);
+    socket.join(`user:${userId}`);  // Legacy room format
+    socket.join(userId.toString()); // For notification consumer
+    console.log(`👤 User ${userId} joined personal rooms`);
   }
   
   socket.on('disconnect', () => {
@@ -91,14 +93,16 @@ app.set('io', io);
 
 app.configureRoutes(io);
 
-// ... (Phần Workers và Shutdown giữ nguyên như code cũ của bạn) ...
+// --- Workers ---
 const outboxPublisher = getOutboxPublisher({ pollInterval: 100, batchSize: 50 });
 const streamConsumer = new StreamConsumer(io, { consumerName: `consumer-${process.pid}`, blockTime: 1000, batchSize: 10 });
+const notificationConsumer = new NotificationConsumer(io, { consumerName: `notification-consumer-${process.pid}`, blockTime: 1000, batchSize: 10 });
 
 (async () => {
   try {
     await outboxPublisher.start();
     await streamConsumer.start();
+    await notificationConsumer.start();
     console.log('✅ All workers started successfully');
   } catch (err) {
     console.error('❌ Failed to start workers:', err);
@@ -111,6 +115,7 @@ const gracefulShutdown = async (signal) => {
     server.close(() => console.log('✅ HTTP server closed'));
     await outboxPublisher.stop();
     await streamConsumer.stop();
+    await notificationConsumer.stop();
     await closeAllRedisConnections();
     io.close(() => console.log('✅ Socket.IO closed'));
     process.exit(0);

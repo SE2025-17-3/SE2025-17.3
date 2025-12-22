@@ -3,6 +3,7 @@ import Team from '../models/Team.js';
 import User from '../models/User.js';
 import PixelEvent from '../models/PixelEvent.js';
 import mongoose from 'mongoose';
+import { createNotificationBatch } from '../services/notificationService.js';
 
 // Constants
 const MAX_TEAM_SIZE = 50;
@@ -316,6 +317,34 @@ export const joinTeam = async (req, res) => {
 
     console.log(`User ${user.username} (${user._id}) joined team ${team.name} (${team._id})`);
 
+    // Notify other team members about the new member
+    try {
+      const otherMembers = await User.find({ 
+        teamId: team._id, 
+        _id: { $ne: userId } 
+      }).select('_id');
+
+      if (otherMembers.length > 0) {
+        const notifications = otherMembers.map(member => ({
+          userId: member._id,
+          type: 'team_member_joined',
+          title: 'New Team Member',
+          message: `${user.username} joined your team "${team.name}"`,
+          data: {
+            teamId: team._id,
+            teamName: team.name,
+            newMemberId: user._id,
+            newMemberUsername: user.username,
+          },
+        }));
+
+        await createNotificationBatch(notifications);
+        console.log(`📨 Sent ${notifications.length} team_member_joined notifications`);
+      }
+    } catch (notifError) {
+      console.warn('⚠️ Failed to send join notifications:', notifError.message);
+    }
+
     res.json({
       message: 'Successfully joined team',
       team: {
@@ -364,6 +393,9 @@ export const leaveTeam = async (req, res) => {
     }
 
     // Regular member leaving - decrement team member count
+    const teamName = team?.name;
+    const teamIdForNotif = team?._id;
+
     if (team) {
       team.memberCount = Math.max(0, team.memberCount - 1);
       await team.save();
@@ -371,6 +403,35 @@ export const leaveTeam = async (req, res) => {
 
     user.teamId = null;
     await user.save();
+
+    // Notify remaining team members about the departure
+    if (team) {
+      try {
+        const remainingMembers = await User.find({ 
+          teamId: teamIdForNotif 
+        }).select('_id');
+
+        if (remainingMembers.length > 0) {
+          const notifications = remainingMembers.map(member => ({
+            userId: member._id,
+            type: 'team_member_left',
+            title: 'Team Member Left',
+            message: `${user.username} left your team "${teamName}"`,
+            data: {
+              teamId: teamIdForNotif,
+              teamName: teamName,
+              leftMemberId: user._id,
+              leftMemberUsername: user.username,
+            },
+          }));
+
+          await createNotificationBatch(notifications);
+          console.log(`📨 Sent ${notifications.length} team_member_left notifications`);
+        }
+      } catch (notifError) {
+        console.warn('⚠️ Failed to send leave notifications:', notifError.message);
+      }
+    }
 
     res.json({ message: 'Successfully left team' });
   } catch (error) {
