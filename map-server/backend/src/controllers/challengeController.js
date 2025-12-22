@@ -57,3 +57,33 @@ export const getMyStreak = async (req, res) => {
     res.status(500).json({ error: 'Failed to get streak' });
   }
 };
+
+/**
+ * POST /api/challenges/:id/claim
+ * Claim reward for completed challenge
+ */
+export const claimReward = async (req, res) => {
+  try {
+    const userId = req.session?.userId;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    const userChallengeId = req.params.id;
+    
+    const result = await challengeService.claimChallengeReward(userId, userChallengeId);
+    
+    res.json({
+      success: true,
+      message: `Claimed ${result.dropletsAwarded} droplets!`,
+      ...result
+    });
+  } catch (error) {
+    console.error('❌ Error claiming reward:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};

@@ -2,12 +2,15 @@
 import React, { useState } from 'react';
 import { useChallenge } from '../context/ChallengeContext';
 import { useAuth } from '../context/AuthContext';
+import { useWallet } from '../context/WalletContext';
 import './ChallengePanel.css';
 
 const ChallengePanel = () => {
-  const { challenges, stats, loading } = useChallenge();
-  const { isLoggedIn } = useAuth();
+  const { challenges, stats, loading, refreshChallenges } = useChallenge();
+  const { isLoggedIn, user, refreshUser } = useAuth();
+  const { refreshWallet } = useWallet();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [claiming, setClaiming] = useState(null);
 
   if (!isLoggedIn) {
     return null; // Don't show panel if not logged in
@@ -15,6 +18,41 @@ const ChallengePanel = () => {
 
   const toggleCollapse = () => {
     setIsCollapsed(!isCollapsed);
+  };
+
+  const handleClaimReward = async (userChallengeId, points) => {
+    try {
+      setClaiming(userChallengeId);
+      const response = await fetch(`/api/challenges/${userChallengeId}/claim`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(`✅ Claimed ${data.dropletsAwarded} droplets!`);
+
+        // Show new badges if any
+        if (data.newBadges && data.newBadges.length > 0) {
+          data.newBadges.forEach(badge => {
+            alert(`🏆 New Badge Earned: ${badge.name} ${badge.icon}`);
+          });
+        }
+
+        // Refresh challenges and user data
+        await refreshChallenges();
+        await refreshUser();
+        await refreshWallet();
+      } else {
+        alert(`❌ ${data.message}`);
+      }
+    } catch (error) {
+      console.error('Error claiming reward:', error);
+      alert('Failed to claim reward');
+    } finally {
+      setClaiming(null);
+    }
   };
 
   if (isCollapsed) {
@@ -40,12 +78,19 @@ const ChallengePanel = () => {
 
       <div className="challenge-stats">
         <div className="stat-item">
-          <span className="stat-value">{stats.currentStreak}</span>
-          <span className="stat-label">🔥 Streak</span>
+          <span className="stat-icon">🔥</span>
+          <span className="stat-value">{user?.challengeStreak || stats.currentStreak || 0}</span>
+          <span className="stat-label">Day Streak</span>
         </div>
         <div className="stat-item">
-          <span className="stat-value">{stats.points}</span>
-          <span className="stat-label">⭐ Points</span>
+          <span className="stat-icon">⭐</span>
+          <span className="stat-value">{user?.challengePoints || stats.points || 0}</span>
+          <span className="stat-label">Total Points</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-icon">🏆</span>
+          <span className="stat-value">{user?.badges?.length || 0}</span>
+          <span className="stat-label">Badges</span>
         </div>
       </div>
 
@@ -62,8 +107,8 @@ const ChallengePanel = () => {
             const percentage = (progress / item.goal) * 100;
 
             return (
-              <div 
-                key={item._id} 
+              <div
+                key={item._id}
                 className={`challenge-item ${item.completed ? 'completed' : ''}`}
               >
                 <div className="challenge-title">
@@ -71,24 +116,40 @@ const ChallengePanel = () => {
                   <h4>{item.challenge.title}</h4>
                   {item.completed && <span>✅</span>}
                 </div>
-                
+
                 <p className="challenge-desc">{item.challenge.description}</p>
-                
+
                 <div className="challenge-progress-container">
                   <div className="progress-text">
                     {progress}/{item.goal}
                   </div>
                   <div className="progress-bar">
-                    <div 
-                      className="progress-fill" 
+                    <div
+                      className="progress-fill"
                       style={{ width: `${percentage}%` }}
                     />
                   </div>
                 </div>
 
-                <span className="challenge-points">
-                  +{item.challenge.reward.points} points
-                </span>
+                <div className="challenge-footer">
+                  <span className="challenge-points">
+                    +{item.challenge.reward.points} points
+                  </span>
+
+                  {item.completed && !item.rewardClaimed && (
+                    <button
+                      onClick={() => handleClaimReward(item._id, item.challenge.reward.points)}
+                      disabled={claiming === item._id}
+                      className="claim-reward-button"
+                    >
+                      {claiming === item._id ? 'Claiming...' : `Claim ${item.challenge.reward.points} 💧`}
+                    </button>
+                  )}
+
+                  {item.rewardClaimed && (
+                    <span className="claimed-badge">✅ Claimed</span>
+                  )}
+                </div>
               </div>
             );
           })

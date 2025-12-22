@@ -27,6 +27,15 @@ const userChallengeSchema = new mongoose.Schema({
   completedAt: {
     type: Date
   },
+  rewardClaimed: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  claimedAt: {
+    type: Date,
+    default: null
+  },
   date: {
     type: Date,
     default: Date.now,
