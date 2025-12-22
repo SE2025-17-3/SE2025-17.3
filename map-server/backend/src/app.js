@@ -13,25 +13,30 @@ import statsRoutes from './routes/statsRoutes.js';
 import teamRoutes from './routes/teamRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 
+import challengeRoutes from './routes/challengeRoutes.js';
+import walletRoutes from './routes/walletRoutes.js';
+import storeRoutes from './routes/storeRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
+
 const app = express();
 
 const allowedOrigins = [
-  'http://localhost:5173',       // Frontend chạy Local
-  'http://localhost:4173',       // Frontend chạy Preview
-  'https://se2025-17-3.codes',   // Frontend Production
+  'http://localhost:5173',        // Frontend Local
+  'http://localhost:4173',        // Frontend Preview
+  'https://se2025-17-3.codes',    // Frontend Production
   process.env.FRONTEND_URL
 ];
 
-app.set('trust proxy', 1); // Cần thiết cho HTTPS sau Nginx
+app.set('trust proxy', 1); // Cần cho HTTPS + Nginx reverse proxy
 
-// 1. CORS
+/* ===================== CORS ===================== */
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.log("Blocked by CORS:", origin);
+      console.log('❌ Blocked by CORS:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -39,18 +44,19 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
 }));
 
-// 2. Body Parsers (SỬA Ở ĐÂY: Chỉ giữ lại 1 lần khai báo có limit)
-// Tăng giới hạn lên 50MB để nhận được ảnh Base64
+/* ===================== BODY PARSER ===================== */
+// Tăng limit để nhận ảnh Base64
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// 3. Static Files (Avatar)
+/* ===================== STATIC FILES ===================== */
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// Configure Routes
+/* ===================== ROUTES ===================== */
 app.configureRoutes = (io) => {
+  // Gắn socket.io vào request
   app.use((req, res, next) => {
     req.io = io;
     next();
@@ -64,8 +70,16 @@ app.configureRoutes = (io) => {
   app.use('/api/stats', statsRoutes);
   app.use('/api/teams', teamRoutes);
 
+  app.use('/api/challenges', challengeRoutes);
+  app.use('/api/wallet', walletRoutes);
+  app.use('/api/store', storeRoutes);
+  app.use('/api/payments', paymentRoutes);
+
+  // API 404 handler
   app.use(/\/api\/.*/, (req, res) => {
-    res.status(404).json({ message: `API endpoint không tồn tại: ${req.originalUrl}` });
+    res.status(404).json({
+      message: `API endpoint không tồn tại: ${req.originalUrl}`
+    });
   });
 };
 
