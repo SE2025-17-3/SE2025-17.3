@@ -22,14 +22,29 @@ const PaymentSuccess = ({ onClose }) => {
 
   const verifyPayment = async (paymentIntentId) => {
     try {
-      // Refresh wallet to get updated balance
-      await refreshWallet();
-      setPaymentStatus('success');
-      
-      // Optionally, you could fetch payment details from backend
-      // const response = await fetch(`/api/payments/intent/${paymentIntentId}`);
-      // const data = await response.json();
-      // setPaymentInfo(data);
+      // Call backend to confirm payment and award droplets
+      const response = await fetch('/api/payments/confirm-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ paymentIntentId }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Refresh wallet to get updated balance
+        await refreshWallet();
+        setPaymentStatus('success');
+        setPaymentInfo({
+          dropletsAwarded: data.dropletsAwarded,
+        });
+      } else {
+        console.error('Payment confirmation failed:', data.message);
+        setPaymentStatus('error');
+      }
     } catch (error) {
       console.error('Error verifying payment:', error);
       setPaymentStatus('error');
@@ -69,7 +84,11 @@ const PaymentSuccess = ({ onClose }) => {
     <div className="payment-success-container">
       <div className="payment-icon success">✅</div>
       <h2>Payment Successful!</h2>
-      <p>Your droplets have been added to your account.</p>
+      <p>
+        {paymentInfo?.dropletsAwarded
+          ? `${paymentInfo.dropletsAwarded} droplets have been added to your account!`
+          : 'Your droplets have been added to your account.'}
+      </p>
       <div className="success-animation">
         <span className="droplet-rain">💧</span>
         <span className="droplet-rain">💧</span>
