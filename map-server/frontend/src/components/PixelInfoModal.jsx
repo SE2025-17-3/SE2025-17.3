@@ -1,4 +1,4 @@
-// D:\Code\SE2025-17.3\map-server\frontend\src\components\PixelInfoModal.jsx
+// map-server/frontend/src/components/PixelInfoModal.jsx
 import React from 'react';
 import './PixelInfoModal.css';
 

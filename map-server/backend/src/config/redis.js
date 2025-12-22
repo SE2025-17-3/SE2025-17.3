@@ -1,3 +1,5 @@
+// map-server/backend/src/config/redis.js
+
 import Redis from 'ioredis';
 import dotenv from 'dotenv';
 

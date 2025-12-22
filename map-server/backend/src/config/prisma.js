@@ -1,4 +1,5 @@
-// D:\Code\SE2025-17.3\map-server\backend\src\config\prisma.js
+// map-server/backend/src/config/prisma.js
+
 import { PrismaClient } from '@prisma/client';
 
 // Tạo instance Prisma Client

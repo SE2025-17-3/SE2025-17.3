@@ -1,4 +1,4 @@
-// D:\Code\SE2025-17.3\map-server\frontend\src\context\VerificationContext.jsx
+// map-server/frontend/src/context/VerificationContext.jsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
 
 const VerificationContext = createContext();

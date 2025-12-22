@@ -1,3 +1,5 @@
+// map-server/backend/src/models/Pixel.js
+
 import mongoose from 'mongoose';
 
 const pixelSchema = new mongoose.Schema({

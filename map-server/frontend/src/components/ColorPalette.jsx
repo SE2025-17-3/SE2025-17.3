@@ -1,5 +1,4 @@
-// D:\Code\SE2025-17.3\map-server\frontend\src\components\ColorPalette.jsx
-
+// map-server/frontend/src/components/ColorPalette.jsx
 import React from 'react';
 import './ColorPalette.css'; // File CSS để tạo kiểu dáng
 

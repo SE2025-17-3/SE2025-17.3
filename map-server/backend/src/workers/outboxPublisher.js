@@ -1,4 +1,4 @@
-// D:\Code\SE2025-17.3\map-server\backend\src\workers\outboxPublisher.js
+// map-server/backend/src/workers/outboxPublisher.js
 
 import Outbox from '../models/Outbox.js';
 import { getPublisher, STREAMS } from '../config/redis.js';
@@ -152,4 +152,3 @@ export const getOutboxPublisher = (options) => {
 };
 
 export default OutboxPublisher;
-
