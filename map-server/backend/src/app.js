@@ -15,6 +15,7 @@ import challengeRoutes from './routes/challengeRoutes.js';
 import walletRoutes from './routes/walletRoutes.js';
 import storeRoutes from './routes/storeRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 
 const app = express();
 // Lấy URL từ biến môi trường, fallback về localhost nếu chạy local
@@ -58,6 +59,7 @@ app.configureRoutes = (io) => {
   app.use('/api/wallet', walletRoutes);
   app.use('/api/store', storeRoutes);
   app.use('/api/payments', paymentRoutes);
+  app.use('/api/notifications', notificationRoutes);
 
   app.use(/\/api\/.*/, (req, res) => {
     res.status(404).json({ message: `API endpoint không tồn tại: ${req.originalUrl}` });

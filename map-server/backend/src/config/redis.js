@@ -130,9 +130,11 @@ export const closeAllRedisConnections = async () => {
 // Stream names as constants
 export const STREAMS = {
   PIXEL_EVENTS: 'pixels:events',
+  NOTIFICATIONS: 'notifications:events',
 };
 
 // Consumer group names
 export const CONSUMER_GROUPS = {
   PIXEL_BROADCASTERS: 'pixel-broadcasters',
+  NOTIFICATION_PROCESSORS: 'notification-processors',
 };
