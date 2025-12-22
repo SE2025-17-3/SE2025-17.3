@@ -146,6 +146,68 @@ const getPaymentStats = async (req, res) => {
 };
 
 /**
+ * Confirm payment and award droplets (fallback for when webhooks don't fire)
+ */
+const confirmPayment = async (req, res) => {
+  try {
+    const { paymentIntentId } = req.body;
+    const userId = req.user._id;
+
+    if (!paymentIntentId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment Intent ID is required',
+      });
+    }
+
+    if (!isStripeEnabled()) {
+      return res.status(503).json({
+        success: false,
+        message: 'Payment system is not available',
+      });
+    }
+
+    const stripe = getStripeClient();
+
+    // Verify payment intent with Stripe
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+    if (paymentIntent.status !== 'succeeded') {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment has not succeeded yet',
+        status: paymentIntent.status,
+      });
+    }
+
+    // Verify this payment belongs to the user
+    const payment = await paymentService.getPaymentById(paymentIntentId);
+    if (!payment || payment.userId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Payment not found or unauthorized',
+      });
+    }
+
+    // Process the payment if not already processed
+    const io = req.app.get('io');
+    await paymentService.handlePaymentSuccess(paymentIntent, io);
+
+    res.json({
+      success: true,
+      message: 'Payment confirmed and droplets awarded',
+      dropletsAwarded: payment.dropletsAwarded,
+    });
+  } catch (error) {
+    console.error('Error confirming payment:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to confirm payment',
+    });
+  }
+};
+
+/**
  * Get Stripe publishable key
  */
 const getPublishableKey = async (req, res) => {
@@ -159,6 +221,7 @@ const getPublishableKey = async (req, res) => {
 export default {
   getPackages,
   createPaymentIntent,
+  confirmPayment,
   handleWebhook,
   getPaymentHistory,
   getPaymentStats,

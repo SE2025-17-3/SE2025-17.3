@@ -257,10 +257,10 @@ const getUserPaymentStats = async (userId) => {
 };
 
 /**
- * Get payment by ID
+ * Get payment by payment intent ID
  */
-const getPaymentById = async (paymentId) => {
-  return Payment.findById(paymentId);
+const getPaymentById = async (paymentIntentId) => {
+  return Payment.findOne({ stripePaymentIntentId: paymentIntentId });
 };
 
 export default {

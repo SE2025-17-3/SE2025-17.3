@@ -10,6 +10,7 @@ router.get('/config', paymentController.getPublishableKey);
 // Protected routes (require authentication)
 router.get('/packages', protect, paymentController.getPackages);
 router.post('/create-intent', protect, paymentController.createPaymentIntent);
+router.post('/confirm-payment', protect, paymentController.confirmPayment);
 router.get('/history', protect, paymentController.getPaymentHistory);
 router.get('/stats', protect, paymentController.getPaymentStats);
 
