@@ -1,4 +1,4 @@
-// D:\Code\SE2025-17.3\map-server\backend\src\app.js
+// map-server/backend/src/app.js
 
 import express from 'express';
 import cors from 'cors';
@@ -11,26 +11,38 @@ import userRoutes from './routes/userRoutes.js';
 import leaderboardRoutes from './routes/leaderboardRoutes.js';
 import statsRoutes from './routes/statsRoutes.js';
 import teamRoutes from './routes/teamRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 
 const app = express();
-// Lấy URL từ biến môi trường, fallback về localhost nếu chạy local
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
-// --- QUAN TRỌNG KHI LÊN PRODUCTION (NGINX/HTTPS) ---
-// Giúp Express nhận diện được giao thức HTTPS từ Nginx chuyển vào
-app.set('trust proxy', 1);
-// ---------------------------------------------------
+const allowedOrigins = [
+  'http://localhost:5173',       // Frontend chạy Local
+  'http://localhost:4173',       // Frontend chạy Preview
+  'https://se2025-17-3.codes',   // Frontend Production
+  process.env.FRONTEND_URL
+];
+
+app.set('trust proxy', 1); // Cần thiết cho HTTPS sau Nginx
 
 // 1. CORS
 app.use(cors({
-  origin: FRONTEND_URL,
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log("Blocked by CORS:", origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'] // Khai báo rõ method cho chắc chắn
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
 }));
 
-// 2. Body Parsers
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// 2. Body Parsers (SỬA Ở ĐÂY: Chỉ giữ lại 1 lần khai báo có limit)
+// Tăng giới hạn lên 50MB để nhận được ảnh Base64
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // 3. Static Files (Avatar)
 const __filename = fileURLToPath(import.meta.url);
@@ -46,6 +58,7 @@ app.configureRoutes = (io) => {
 
   app.use('/api/pixels', configurePixelRoutes(io));
   app.use('/api/auth', authRoutes);
+  app.use('/api/admin', adminRoutes);
   app.use('/api/users', userRoutes);
   app.use('/api/leaderboard', leaderboardRoutes);
   app.use('/api/stats', statsRoutes);

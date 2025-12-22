@@ -1,4 +1,5 @@
-// D:\Code\SE2025-17.3\map-server\backend\src\config\db.js
+// map-server/backend/src/config/db.js
+
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 

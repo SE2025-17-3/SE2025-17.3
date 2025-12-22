@@ -1,4 +1,5 @@
-// D:\Code\SE2025-17.3\map-server\backend\src\routes\teamRoutes.js
+// map-server/backend/src/routes/teamRoutes.js
+
 import express from 'express';
 import {
   createTeam,

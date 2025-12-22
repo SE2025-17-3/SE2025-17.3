@@ -1,4 +1,4 @@
-// D:\Code\SE2025-17.3\map-server\backend\src\models\Team.js
+// backend/src/models/Team.js
 import mongoose from 'mongoose';
 
 const teamSchema = new mongoose.Schema({
@@ -18,6 +18,17 @@ const teamSchema = new mongoose.Schema({
     default: 1,
     min: 0,
   },
+  // --- THÊM PHẦN NÀY ---
+  overlay: {
+    url: { type: String, default: '' },
+    x: { type: Number, default: 0 },
+    y: { type: Number, default: 0 },
+    width: { type: Number, default: 50 },
+    aspectRatio: { type: Number, default: 1 },
+    opacity: { type: Number, default: 0.5 },
+    visible: { type: Boolean, default: false }
+  }
+  // ---------------------
 }, { timestamps: true });
 
 export default mongoose.model('Team', teamSchema);

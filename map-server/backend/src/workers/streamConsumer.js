@@ -1,4 +1,4 @@
-// D:\Code\SE2025-17.3\map-server\backend\src\workers\streamConsumer.js
+// map-server/backend/src/workers/streamConsumer.js
 
 import { getSubscriber, STREAMS, CONSUMER_GROUPS } from '../config/redis.js';
 
@@ -222,4 +222,3 @@ class StreamConsumer {
 }
 
 export default StreamConsumer;
-

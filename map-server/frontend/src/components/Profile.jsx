@@ -1,3 +1,4 @@
+// map-server/frontend/src/components/Profile.jsx
 import React, { useState } from 'react';
 import './Profile.css';
 import EditProfileModal from './EditProfileModal';

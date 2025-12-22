@@ -1,4 +1,4 @@
-// D:\Code\SE2025-17.3\map-server\frontend\src\components\ShareModal.jsx
+// map-server/frontend/src/components/ShareModal.jsx
 import React, { useState } from 'react';
 import './ShareModal.css';
 

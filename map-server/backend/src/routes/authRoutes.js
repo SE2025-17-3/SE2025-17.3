@@ -1,4 +1,4 @@
-// D:\Code\SE2025-17.3\map-server\backend\src\routes\authRoutes.js
+// map-server/backend/src/routes/authRoutes.js
 
 import express from 'express';
 import {
@@ -18,7 +18,7 @@ import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// --- Validation Arrays (Giữ nguyên) ---
+// --- Validation Arrays ---
 const registerValidation = [
   body('username', 'Tên đăng nhập không được trống').notEmpty().trim(),
   body('email', 'Email không hợp lệ').isEmail(),
@@ -39,20 +39,14 @@ const loginValidation = [
 router.post('/register', verifyRecaptcha, registerValidation, registerUser);
 router.post('/login', verifyRecaptcha, loginValidation, loginUser);
 router.post('/google', googleLogin);
-router.post('/logout', protect, logoutUser);
 
-// --- PHẦN QUAN TRỌNG: LOGIC QUÊN MẬT KHẨU (OTP) ---
+// SỬA Ở ĐÂY: Bỏ 'protect' middleware để tránh lỗi 401 khi session đã hết hạn
+router.post('/logout', logoutUser);
 
-// 1. Gửi mã OTP (POST)
+// --- PASSWORD RESET & VERIFY ---
 router.post('/forgot-password', forgotPassword);
-
-// 2. Kiểm tra mã OTP (POST) - Route này mới thêm
 router.post('/verify-otp', verifyOTP);
-
-// 3. Đặt lại mật khẩu (POST) - Lưu ý: Dùng POST và KHÔNG có :token
 router.post('/reset-password', resetPassword);
-
 router.post('/verify-email', verifyEmail);
-
 
 export default router;
