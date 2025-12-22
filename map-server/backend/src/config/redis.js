@@ -45,6 +45,9 @@ const createRedisClient = (label) => {
 // Khởi tạo Client chung (General) ngay lập tức để tránh lỗi import undefined
 export const redis = createRedisClient('General');
 
+export const getRedisClient = () => redis;
+
+
 /**
  * Get Redis client for publishing to streams (Lazy load)
  */

@@ -1,3 +1,4 @@
+//backend/src/controllers/pixelController.js
 import Pixel from '../models/Pixel.js';
 import PixelEvent from '../models/PixelEvent.js';
 import Outbox from '../models/Outbox.js';
