@@ -11,6 +11,9 @@ router.get('/my', challengeController.getMyChallenges);
 router.get('/my/stats', challengeController.getMyStats);
 
 // Get user's streak information
+// Claim reward for completed challenge
+router.post("/:id/claim", challengeController.claimReward);
+
 router.get('/my/streak', challengeController.getMyStreak);
 
 export default router;

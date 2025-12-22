@@ -229,3 +229,134 @@ export const getUserChallengeStats = async (userId) => {
     ...streak
   };
 };
+
+/**
+ * Claim reward for completed challenge
+ * Converts points to droplets (1 point = 1 droplet)
+ * Updates streak and awards badges
+ */
+export const claimChallengeReward = async (userId, userChallengeId) => {
+  const mongoose = (await import('mongoose')).default;
+  const walletService = await import('./walletService.js');
+  const Badge = (await import('../models/Badge.js')).default;
+  
+  const session = await mongoose.startSession();
+  
+  try {
+    let result;
+    
+    await session.withTransaction(async () => {
+      // 1. Get user challenge
+      const userChallenge = await UserChallenge.findById(userChallengeId)
+        .populate('challengeId')
+        .session(session);
+      
+      if (!userChallenge || userChallenge.userId.toString() !== userId.toString()) {
+        throw new Error('Challenge not found or unauthorized');
+      }
+      
+      if (!userChallenge.completed) {
+        throw new Error('Challenge not completed yet');
+      }
+      
+      if (userChallenge.rewardClaimed) {
+        throw new Error('Reward already claimed');
+      }
+      
+      // 2. Get user
+      const user = await User.findById(userId).session(session);
+      const challenge = userChallenge.challengeId;
+      const points = challenge.reward.points;
+      
+      // 3. Award droplets (1 point = 1 droplet)
+      await walletService.addDroplets(
+        userId,
+        points,
+        'challenge_reward',
+        {
+          challengeId: challenge._id,
+          challengeTitle: challenge.title,
+          points
+        }
+      );
+      
+      // 4. Update user challenge points and total
+      user.challengePoints += points;
+      user.totalChallengesCompleted += 1;
+      
+      // 5. Update streak
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const lastDate = user.lastChallengeDate ? new Date(user.lastChallengeDate) : null;
+      if (lastDate) {
+        lastDate.setHours(0, 0, 0, 0);
+      }
+      
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      if (!lastDate || lastDate.getTime() === yesterday.getTime()) {
+        // Continue streak
+        user.challengeStreak += 1;
+      } else if (lastDate.getTime() === today.getTime()) {
+        // Already completed today, don't increment
+      } else {
+        // Streak broken, reset to 1
+        user.challengeStreak = 1;
+      }
+      
+      user.lastChallengeDate = today;
+      
+      // 6. Check and award badges
+      const newBadges = await checkAndAwardBadges(user, session, Badge);
+      
+      // 7. Mark reward as claimed
+      userChallenge.rewardClaimed = true;
+      userChallenge.claimedAt = new Date();
+      await userChallenge.save({ session });
+      await user.save({ session });
+      
+      result = {
+        success: true,
+        dropletsAwarded: points,
+        totalPoints: user.challengePoints,
+        currentStreak: user.challengeStreak,
+        newBadges
+      };
+    });
+    
+    return result;
+  } catch (error) {
+    throw new Error(`Failed to claim reward: ${error.message}`);
+  } finally {
+    session.endSession();
+  }
+};
+
+/**
+ * Check and award badges based on streak
+ */
+const checkAndAwardBadges = async (user, session, Badge) => {
+  const newBadges = [];
+  const streak = user.challengeStreak;
+  
+  // Get all badges
+  const badges = await Badge.find({}).session(session);
+  const badgeMap = {};
+  badges.forEach(b => badgeMap[b.key] = b);
+  
+  // Check 7-day streak
+  if (streak >= 7 && badgeMap['week_warrior'] && !user.badges.some(b => b.equals(badgeMap['week_warrior']._id))) {
+    user.badges.push(badgeMap['week_warrior']._id);
+    newBadges.push(badgeMap['week_warrior']);
+  }
+  
+  // Check 30-day streak
+  if (streak >= 30 && badgeMap['month_master'] && !user.badges.some(b => b.equals(badgeMap['month_master']._id))) {
+    user.badges.push(badgeMap['month_master']._id);
+    newBadges.push(badgeMap['month_master']);
+  }
+  
+  return newBadges;
+};
