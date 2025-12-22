@@ -75,6 +75,20 @@ const userSchema = new mongoose.Schema({
     default: 0,
     min: 0,
   },
+  challengeStreak: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+  lastChallengeDate: {
+    type: Date,
+    default: null,
+  },
+  totalChallengesCompleted: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
   badges: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Badge',
