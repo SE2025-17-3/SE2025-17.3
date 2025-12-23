@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useMap, Marker } from 'react-leaflet';
 import L from 'leaflet';
 import { useSocket } from '../context/SocketContext';
-import { WORLD_BOUNDS, GRID_WIDTH, GRID_HEIGHT } from '../config/constants';
+import { WORLD_BOUNDS, GRID_WIDTH, GRID_HEIGHT, PING_FLYTO_ZOOM } from '../config/constants';
 import './PingLayer.css';
 
 const PingLayer = ({ currentTeamId }) => {
@@ -48,7 +48,7 @@ const PingLayer = ({ currentTeamId }) => {
 
         // 2. Bay đến đúng vị trí
         // Zoom mức 20 để nhìn rõ pixel
-        map.flyTo(ping.position, 20, {
+        map.flyTo(ping.position, PING_FLYTO_ZOOM, {
             duration: 1.5 // Bay từ từ trong 1.5 giây
         });
     };

@@ -33,3 +33,9 @@ export const CHUNK_SIZE = 256;
 
 // Mức zoom tối thiểu để bắt đầu load/vẽ pixel (giữ mức 4 để nhìn bao quát)
 export const MIN_ZOOM_TO_SHOW_PIXELS = 4;
+export const DEFAULT_ZOOM = MIN_ZOOM_TO_SHOW_PIXELS;
+export const ZOOM_TO_PAINT = MIN_ZOOM_TO_SHOW_PIXELS + 1;
+export const FAVORITE_TARGET_ZOOM = MIN_ZOOM_TO_SHOW_PIXELS + 2;
+export const PIXEL_DETAIL_ZOOM = 18;
+export const LOCATION_FLYTO_ZOOM = 16;
+export const PING_FLYTO_ZOOM = 20;
