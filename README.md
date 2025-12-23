@@ -15,6 +15,7 @@ A real-time collaborative pixel art platform inspired by Reddit's r/place, allow
 - **High availability**: Redis caching with chunk-based data loading for performance
 - **Gamification engine**: Challenge system with streaks, badges, and reward mechanics
 - **Monetization ready**: Stripe integration for in-app purchases (droplets currency, energy boosts)
+- **Event-driven notifications**: Redis Streams with hybrid push/pull delivery for user engagement
 
 ### Target Audience
 - **Pixel art communities** seeking collaborative creation spaces
@@ -52,8 +53,14 @@ A real-time collaborative pixel art platform inspired by Reddit's r/place, allow
 ### Database/Storage
 | System | Purpose |
 |--------|---------|
-| **MongoDB** | Primary data store (users, pixels, teams, challenges) |
-| **Redis** | Caching layer for chunk data + Pub/Sub for real-time events |
+| **MongoDB** | Primary data store (users, pixels, teams, challenges, notifications) |
+| **Redis** | Caching layer for chunk data + Streams for event processing |
+
+### Redis Streams
+| Stream | Consumer Group | Purpose |
+|--------|----------------|---------|
+| `pixels:events` | `pixel-processors` | Pixel event processing |
+| `notifications:events` | `notification-processors` | Notification delivery (push/pull) |
 
 ### Key Design Patterns
 
@@ -67,32 +74,85 @@ graph TD
         E --> F[AuthContext]
         E --> G[SocketContext]
         E --> H[ChallengeContext]
+        E --> I[NotificationContext]
+        A --> J[NotificationBell]
+        A --> K[NotificationToast]
     end
 
     subgraph "Backend (Express + Socket.IO)"
-        I[server.js] --> J[Express App]
-        I --> K[Socket.IO Server]
-        J --> L[Controllers]
-        L --> M[Services]
-        M --> N[Models]
+        L[server.js] --> M[Express App]
+        L --> N[Socket.IO Server]
+        M --> O[Controllers]
+        O --> P[Services]
+        P --> Q[Models]
+        L --> R[Workers]
     end
 
     subgraph "Data Layer"
-        O[(MongoDB)]
-        P[(Redis)]
+        S[(MongoDB)]
+        T[(Redis Streams)]
     end
 
-    C <-->|WebSocket| K
-    L --> O
-    L --> P
+    C <-->|WebSocket| N
+    J <-->|WebSocket| N
+    O --> S
+    O --> T
+    R --> T
+    R --> S
 ```
 
 - **MVC Pattern**: Controllers handle requests, Models define data structures, Services contain business logic
-- **Context Pattern**: React contexts for global state (Auth, Socket, Challenge, Wallet)
+- **Context Pattern**: React contexts for global state (Auth, Socket, Challenge, Wallet, Notification)
 - **Repository Pattern**: Mongoose models with static methods for data access
 - **Observer Pattern**: Socket.IO for real-time event broadcasting
-- **Outbox Pattern**: Event sourcing for pixel events (ensures consistency)
+- **Outbox Pattern**: Event sourcing for pixel events and notifications (ensures consistency)
 - **Chunk-based Loading**: Canvas data loaded in 256x256 pixel chunks for performance
+- **Redis Streams**: Decoupled event processing for notifications with consumer groups
+
+### Notification System Architecture
+
+```mermaid
+flowchart TB
+    subgraph triggers [Event Triggers]
+        TeamCtrl[Team Controller]
+        ChallengeCtrl[Challenge Service]
+        WalletCtrl[Wallet Service]
+        PaymentCtrl[Payment Service]
+    end
+
+    subgraph outbox [Outbox Pattern]
+        NotifOutbox[(Notification Outbox)]
+    end
+
+    subgraph streaming [Redis Streams]
+        NotifStream[notifications:events]
+    end
+
+    subgraph consumer [Notification Consumer]
+        NotifConsumer[NotificationConsumer Worker]
+    end
+
+    subgraph delivery [Delivery]
+        MongoDB[(Notification Collection)]
+        SocketIO[Socket.IO Push]
+    end
+
+    subgraph client [Client]
+        Browser[User Browser]
+    end
+
+    TeamCtrl --> NotifOutbox
+    ChallengeCtrl --> NotifOutbox
+    WalletCtrl --> NotifOutbox
+    PaymentCtrl --> NotifOutbox
+    
+    NotifOutbox --> NotifStream
+    NotifStream --> NotifConsumer
+    NotifConsumer --> MongoDB
+    NotifConsumer -->|Push types only| SocketIO
+    SocketIO --> Browser
+    Browser -->|Pull types| MongoDB
+```
 
 ---
 
@@ -128,7 +188,24 @@ graph TD
 - Time-filtered views (daily, weekly, all-time)
 - Heatmap visualization of activity
 
-### 6. 🔐 Authentication & Admin
+### 6. 🔔 Notification System
+- **Real-time push notifications** via Socket.IO for immediate feedback
+- **Pull-based notifications** fetched on demand for batch-friendly updates
+- Bell icon with unread count badge
+- Toast pop-ups for critical notifications (droplets earned, payments)
+- Notification history with mark-as-read functionality
+
+| Notification Type | Delivery | Trigger |
+|-------------------|----------|---------|
+| `droplets_earned` | **Push** (Toast) | Completing challenges, rewards |
+| `droplets_spent` | **Push** (Toast) | Store purchases |
+| `payment_success` | **Push** (Toast) | Stripe payment confirmed |
+| `team_member_joined` | **Pull** (Bell) | New team member joins |
+| `team_member_left` | **Pull** (Bell) | Team member leaves |
+| `challenge_completed` | **Pull** (Bell) | Daily challenge finished |
+| `badge_earned` | **Pull** (Bell) | Achievement unlocked |
+
+### 7. 🔐 Authentication & Admin
 - Email/password + Google OAuth authentication
 - Email verification and password reset flows
 - Admin dashboard for user/ban management
@@ -235,26 +312,52 @@ map-server/
 ├── backend/
 │   ├── src/
 │   │   ├── config/          # Redis, database configs
-│   │   ├── controllers/     # Request handlers
+│   │   │   └── redis.js     # Redis client + Stream constants
+│   │   ├── controllers/
+│   │   │   ├── authController.js
+│   │   │   ├── pixelController.js
+│   │   │   ├── teamController.js
+│   │   │   └── notificationController.js  # Notification CRUD
 │   │   ├── middleware/      # Auth, validation
-│   │   ├── models/          # Mongoose schemas
-│   │   ├── routes/          # API route definitions
-│   │   ├── services/        # Business logic
+│   │   ├── models/
+│   │   │   ├── User.js
+│   │   │   ├── Pixel.js
+│   │   │   ├── Team.js
+│   │   │   ├── Notification.js   # Notification schema
+│   │   │   └── Outbox.js         # Event outbox
+│   │   ├── routes/
+│   │   │   └── notificationRoutes.js  # /api/notifications
+│   │   ├── services/
+│   │   │   ├── challengeService.js    # Triggers notifications
+│   │   │   ├── walletService.js       # Triggers notifications
+│   │   │   ├── paymentService.js      # Triggers notifications
+│   │   │   └── notificationService.js # Notification business logic
 │   │   ├── socket/          # Socket.IO handlers
 │   │   ├── utils/           # Helper functions
-│   │   └── workers/         # Background jobs
+│   │   └── workers/
+│   │       ├── outboxPublisher.js     # Outbox → Redis Stream
+│   │       ├── streamConsumer.js      # Pixel event consumer
+│   │       └── notificationConsumer.js # Notification consumer
 │   ├── prisma/              # Prisma schema
 │   ├── migrations/          # MongoDB migrations
-│   └── server.js            # Entry point
+│   └── server.js            # Entry point + worker startup
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── components/      # React components
-│   │   ├── context/         # React contexts
-│   │   ├── services/        # API service layer
+│   │   ├── components/
+│   │   │   ├── NotificationBell.jsx   # Bell icon + dropdown
+│   │   │   ├── NotificationToast.jsx  # Toast pop-ups
+│   │   │   └── Notification.css       # Notification styles
+│   │   ├── context/
+│   │   │   ├── AuthContext.jsx
+│   │   │   ├── SocketContext.jsx
+│   │   │   ├── ChallengeContext.jsx
+│   │   │   └── NotificationContext.jsx # Notification state
+│   │   ├── services/
+│   │   │   └── notificationApi.js     # Notification API calls
 │   │   ├── config/          # Constants, configuration
 │   │   ├── App.jsx          # Main application
-│   │   └── main.jsx         # Entry point
+│   │   └── main.jsx         # Entry point + providers
 │   └── index.html
 │
 └── docker-compose.yml       # Docker orchestration
@@ -274,7 +377,17 @@ map-server/
 | `/api/store/*` | GET/POST | Store items and purchases |
 | `/api/payment/*` | POST | Stripe payment intents |
 | `/api/leaderboard/*` | GET | Rankings and stats |
+| `/api/notifications/*` | Various | User notifications |
 | `/api/admin/*` | Various | Admin operations (protected) |
+
+### Notification API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/notifications` | GET | List user's notifications (paginated) |
+| `/api/notifications/unread-count` | GET | Get unread notification count |
+| `/api/notifications/:id/read` | PATCH | Mark single notification as read |
+| `/api/notifications/read-all` | PATCH | Mark all notifications as read |
 
 ---
 
