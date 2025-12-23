@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import './App.css';
 
 /* ================= COMPONENTS ================= */
 import GlobalCanvasGrid from './components/GlobalCanvasGrid.jsx';
@@ -13,30 +14,30 @@ import VerificationModal from './components/VerificationModal.jsx';
 import Leaderboard from './components/Leaderboard.jsx';
 import TeamModal from './components/TeamModal.jsx';
 import PixelInfoModal from './components/PixelInfoModal.jsx';
-// import ShareModal from './components/ShareModal.jsx'; // Chưa dùng
+import ShareModal from './components/ShareModal.jsx';
 import ZoomToPaintButton from './components/ZoomToPaintButton.jsx';
-import TeamBadge from './components/TeamBadge.jsx';
 import ZoomWarningToast from './components/ZoomWarningToast.jsx';
-// import FavoriteMarkers from './components/FavoriteMarkers.jsx'; // Chưa dùng
-// import LocationButton from './components/LocationButton.jsx'; // Chưa dùng
+import FavoriteMarkers from './components/FavoriteMarkers.jsx';
+import LocationButton from './components/LocationButton.jsx';
+import NotificationBell from './components/NotificationBell.jsx';
+import NotificationToast from './components/NotificationToast.jsx';
+import MapControlWrapper from './components/MapControlWrapper.jsx';
 
 /* Admin / Advanced */
-// import OverlayLayer from './components/OverlayLayer.jsx'; // Chưa dùng
+import OverlayLayer from './components/OverlayLayer.jsx';
 import OverlayMenu from './components/OverlayMenu.jsx';
 import SoundSettings from './components/SoundSettings.jsx';
-// import OverlayMapHandler from './components/OverlayMapHandler.jsx'; // Chưa dùng
-// import PingLayer from './components/PingLayer.jsx'; // Chưa dùng
-// import ChatBox from './components/ChatBox.jsx'; // Chưa dùng
-// import HeatmapLayer from './components/HeatmapLayer.jsx'; // Chưa dùng
-// import AdminAreaSelector from './components/AdminAreaSelector.jsx'; // Chưa dùng
-// import AdminManager from './components/AdminManager.jsx'; // Chưa dùng
-// import AppealModal from './components/AppealModal.jsx'; // Chưa dùng
+import OverlayMapHandler from './components/OverlayMapHandler.jsx';
+import PingLayer from './components/PingLayer.jsx';
+import ChatBox from './components/ChatBox.jsx';
+import HeatmapLayer from './components/HeatmapLayer.jsx';
+import AdminAreaSelector from './components/AdminAreaSelector.jsx';
+import AdminManager from './components/AdminManager.jsx'; 
+import AppealModal from './components/AppealModal.jsx';
 
 /* Store & Challenge */
 import ChallengePanel from './components/ChallengePanel.jsx';
 import Store from './components/Store.jsx';
-import NotificationBell from './components/NotificationBell.jsx';
-import NotificationToast from './components/NotificationToast.jsx';
 
 /* ================= CONTEXTS & SERVICES ================= */
 import { useAuth } from './context/AuthContext.jsx';
@@ -51,7 +52,7 @@ import {
   MIN_ZOOM_TO_SHOW_PIXELS,
   GRID_WIDTH,
   GRID_HEIGHT,
-//   DEFAULT_ZOOM, // Chưa dùng
+  DEFAULT_ZOOM,
   PIXEL_DETAIL_ZOOM,
   ZOOM_TO_PAINT
 } from './config/constants';
@@ -135,37 +136,99 @@ const MapZoomController = ({ setCanPaint }) => {
 };
 
 /* ================= UI ================= */
+const IconGrid = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm11 0h7v7h-7v-7z" />
+  </svg>
+);
+
+const IconCart = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm10 0a2 2 0 1 0 .001 3.999A2 2 0 0 0 17 18zM6.2 6h13.6l-1.4 7.2a2 2 0 0 1-2 1.6H8.1a2 2 0 0 1-2-1.6L4.4 2H2V0h3.6l.6 3z" />
+  </svg>
+);
+
+const IconUsers = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M8.5 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm7 2a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7zM2 22v-1.5A6.5 6.5 0 0 1 8.5 14h0A6.5 6.5 0 0 1 15 20.5V22H2zm13 0v-1.2a6.9 6.9 0 0 0-2.3-5 6.4 6.4 0 0 1 8.3 6.2V22h-6z" />
+  </svg>
+);
+
+const IconChart = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M3 3h2v18H3V3zm6 8h2v10H9V11zm6-5h2v15h-2V6zm6 9h2v6h-2v-6z" />
+  </svg>
+);
+
+const IconHeat = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 2s4 3.5 4 7.5A4 4 0 1 1 8 9.5C8 5.5 12 2 12 2zm0 8.5c-1.1 1-2 2.4-2 3.8a2 2 0 1 0 4 0c0-1.4-.9-2.8-2-3.8z" />
+  </svg>
+);
+
+const IconLogin = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18zm1 5h-2v4H7v2h4v4h2v-4h4v-2h-4V8z" />
+  </svg>
+);
+
+const RailButton = ({ onClick, title, badge, active, children }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`control-button${active ? ' is-active' : ''}`}
+    title={title}
+  >
+    {children}
+    {badge ? <span className="control-badge">{badge}</span> : null}
+  </button>
+);
 const AuthControls = () => {
   const { isLoggedIn, user, openAuthModal } = useAuth();
   return (
-    <div className="absolute top-4 right-4 z-[1200] auth-controls-ignore flex items-center gap-3">
+    <div className="rail-section">
       {isLoggedIn && user ? (
-        <>
-          <NotificationBell />
-          <Profile />
-        </>
+        <Profile compact />
       ) : (
-        <button
-          onClick={openAuthModal}
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md"
-        >
-          Đăng nhập
-        </button>
+        <RailButton onClick={openAuthModal} title="Dang nhap">
+          <IconLogin />
+        </RailButton>
       )}
     </div>
   );
 };
 
-const AuxiliaryButtons = ({ openLeaderboard, openTeamModal, currentTeam, openStore, isHeatmapOn, setIsHeatmapOn }) => (
-    <div className="absolute top-16 right-4 z-[1000] flex flex-col gap-3 items-end aux-buttons-ignore">
-      <button onClick={() => setIsHeatmapOn(!isHeatmapOn)} className={`px-4 py-2 rounded-lg font-bold ${isHeatmapOn ? 'bg-red-500 text-white' : 'bg-white text-gray-700'}`}>
-        {isHeatmapOn ? '🔥 Tắt nhiệt' : '🌡️ Bản đồ nhiệt'}
-      </button>
-      {currentTeam ? <TeamBadge currentTeam={currentTeam} onClick={openTeamModal} /> : <button onClick={openTeamModal} className="px-4 py-2 bg-purple-500 text-white rounded-lg">Team</button>}
-      <button onClick={openLeaderboard} className="px-4 py-2 bg-yellow-500 text-white rounded-lg">Leaderboard</button>
-      <button onClick={openStore} className="px-4 py-2 bg-indigo-600 text-white rounded-lg">💧 Store</button>
-    </div>
+const AuxiliaryButtons = ({
+  openLeaderboard,
+  openTeamModal,
+  openStore,
+  isHeatmapOn,
+  setIsHeatmapOn,
+  pendingCount
+}) => (
+  <div className="rail-section">
+    <RailButton
+      onClick={() => setIsHeatmapOn(!isHeatmapOn)}
+      title={isHeatmapOn ? 'Tat nhiet' : 'Bat nhiet'}
+      active={isHeatmapOn}
+    >
+      <IconHeat />
+    </RailButton>
+    <RailButton onClick={openTeamModal} title="Team">
+      <IconUsers />
+    </RailButton>
+    <RailButton onClick={openLeaderboard} title="Leaderboard">
+      <IconChart />
+    </RailButton>
+    <RailButton onClick={openStore} title="Store" badge={pendingCount > 0 ? pendingCount : null}>
+      <IconCart />
+    </RailButton>
+    <RailButton onClick={openStore} title="Market">
+      <IconGrid />
+    </RailButton>
+  </div>
 );
+
 
 /* ================= MAIN APP ================= */
 const App = () => {
@@ -186,33 +249,15 @@ const App = () => {
   const [favorites, setFavorites] = useState([]);
   const [isHeatmapOn, setIsHeatmapOn] = useState(false);
   const [isStoreOpen, setIsStoreOpen] = useState(false);
-  
-  // Các state chưa dùng trong UI hiện tại nhưng giữ lại để tránh lỗi
-  // const [isWipeMode, setIsWipeMode] = useState(false);
-  // const [isAppealModalOpen, setIsAppealModalOpen] = useState(false);
+  const [isWipeMode, setIsWipeMode] = useState(false);
+  const [isAppealModalOpen, setIsAppealModalOpen] = useState(false);
 
   const [isSoundOpen, setIsSoundOpen] = useState(false);
   const [isOverlayOpen, setIsOverlayOpen] = useState(false);
-  const [showZoomWarning, setShowZoomWarning] = useState(false); // Sửa tên biến cho khớp logic dưới
+  const [showZoomWarning, setShowZoomWarning] = useState(false);
 
   // --- STATE ĐỂ QUẢN LÝ XEM CHI TIẾT TEAM ---
   const [viewingTeamId, setViewingTeamId] = useState(null);
-
-  // --- HANDLERS (Thêm vào để tránh lỗi undefined) ---
-  const handleToggleFavorite = () => {
-     // TODO: Implement logic
-     console.log("Toggle favorite");
-  };
-
-  const handleShare = () => {
-     // TODO: Implement logic
-     console.log("Share pixel");
-  };
-
-  const handleStartMultiPaint = () => {
-      // TODO: Implement logic
-      console.log("Start multi paint");
-  };
 
   const handlePixelClick = async ({ gx, gy }) => {
     try {
@@ -247,110 +292,112 @@ const App = () => {
   };
 
   return (
-    <div style={{ position: 'relative', height: '100vh', width: '100vw' }}>
-      
-      {/* --- MAP CONTAINER (Bắt buộc phải có để bao bọc các Map Components) --- */}
-      <MapContainer 
-        center={[0, 0]} 
-        zoom={2} 
-        style={{ height: "100%", width: "100%" }}
-        crs={L.CRS.Simple} // Giả định map phẳng (Game map), nếu là map thật thì bỏ dòng này
-      >
-          <TileLayer
-            attribution='&copy; OpenStreetMap contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            noWrap={true}
-          />
-          
-          <MapInitializer />
-          <MapUrlHandler />
-          <MapZoomController setCanPaint={setCanPaint} />
-          
-          {/* Render Grid hoặc các layer khác */}
-          <GlobalCanvasGrid 
-            // Truyền props cần thiết vào đây nếu có
-            onPixelClick={handlePixelClick}
+      <div className="app-shell">
+        {isAuthModalOpen && <AuthModal onClose={closeAuthModal} />}
+        {isVerificationRequired && <VerificationModal />}
+        {isAppealModalOpen && <AppealModal onClose={() => setIsAppealModalOpen(false)} />}
+
+        {isPixelInfoModalOpen && pixelInfo && (
+            <PixelInfoModal pixel={pixelInfo} onClose={() => setIsPixelInfoModalOpen(false)} onStartMultiPaint={handleStartPaint} />
+        )}
+
+        {showZoomWarning && (
+            <ZoomWarningToast message="🔍 Phóng to thêm để tô màu!" onClose={() => setShowZoomWarning(false)} />
+        )}
+
+        <div id="map-capture-area" style={{ height: '100%' }}>
+          <MapContainer
+              center={[0, 0]}
+              zoom={DEFAULT_ZOOM}
+              maxZoom={20}
+              style={{ height: '100%', backgroundColor: '#aad3df' }}
+              worldCopyJump={true}
+              preferCanvas
+              maxBounds={VISUAL_BOUNDS} 
+              maxBoundsViscosity={1.0}
+          >
+            <TileLayer url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" attribution="&copy; Google Maps" />
+            
+            <MapUrlHandler />
+            <MapInitializer />
+            <MapZoomController setCanPaint={setCanPaint} />
+
+            <OverlayLayer />
+            <OverlayMapHandler />
+            <PingLayer currentTeamId={currentTeam?._id} />
+            <HeatmapLayer visible={isHeatmapOn} />
+            <AdminAreaSelector isActive={isWipeMode} onComplete={() => setIsWipeMode(false)} onCancel={() => setIsWipeMode(false)} />
+
+            <GlobalCanvasGrid
+                selectedPixelColor={selectedPixelColor}
+                pendingPixels={pendingPixels}
+                setPendingPixels={setPendingPixels}
+                canPaint={canPaint}
+                onZoomWarning={() => setShowZoomWarning(true)}
+                isPaletteVisible={isPaletteVisible}
+                onPixelClickForInfo={handlePixelClick}
+                pixelInfo={pixelInfo}
+            />
+            <FavoriteMarkers favorites={favorites} />
+        <MapControlWrapper className="right-rail" style={{ zIndex: 1200 }}>
+          <NotificationBell />
+          <AuthControls />
+          <AuxiliaryButtons
+            openLeaderboard={() => setIsLeaderboardOpen(true)}
+            openTeamModal={() => setIsTeamModalOpen(true)}
+            openStore={() => setIsStoreOpen(true)}
             isHeatmapOn={isHeatmapOn}
+            setIsHeatmapOn={setIsHeatmapOn}
+            pendingCount={pendingPixels.length}
           />
-      </MapContainer>
+          <ChallengePanel inline />
+          <SoundSettings isOpen={isSoundOpen} onToggle={() => setIsSoundOpen(!isSoundOpen)} inline />
+          <OverlayMenu isOpen={isOverlayOpen} onToggle={() => setIsOverlayOpen(!isOverlayOpen)} inline />
+          <LocationButton inline />
+        </MapControlWrapper>
+
+          </MapContainer>
+        </div>
+
+        <ChatBox />
+        <NotificationToast />
+        <AdminManager onStartWipe={() => setIsWipeMode(true)} />
 
 
-      {/* --- UI OVERLAYS --- */}
-      <AuthControls />
-      
-      <AuxiliaryButtons 
-          openLeaderboard={() => setIsLeaderboardOpen(true)}
-          openTeamModal={() => setIsTeamModalOpen(true)}
-          currentTeam={currentTeam}
-          openStore={() => setIsStoreOpen(true)}
-          isHeatmapOn={isHeatmapOn}
-          setIsHeatmapOn={setIsHeatmapOn}
-      />
 
-      {/* --- MODALS & TOASTS --- */}
-      <NotificationToast />
-      
-      {isAuthModalOpen && <AuthModal onClose={closeAuthModal} />}
-      {isVerificationRequired && <VerificationModal />}
+        {/* --- CẬP NHẬT LEADERBOARD & TEAM MODAL --- */}
+        {isLeaderboardOpen && (
+            <Leaderboard 
+                isOpen={isLeaderboardOpen} 
+                onClose={() => setIsLeaderboardOpen(false)} 
+                onTeamClick={handleViewTeamDetails} // Truyền hàm xử lý
+            />
+        )}
+        
+        {isTeamModalOpen && (
+            <TeamModal 
+                isOpen={isTeamModalOpen} 
+                onClose={handleCloseTeamModal} // Dùng hàm đóng mới
+                teamId={viewingTeamId} // Truyền ID team cần xem
+                mode={viewingTeamId ? 'details' : 'list'} // Nếu có ID thì mở thẳng vào chi tiết
+            />
+        )}
 
-      {showZoomWarning && (
-        <ZoomWarningToast
-          message={showZoomWarning} // Sửa: Dùng showZoomWarning vì nó chứa message (hoặc boolean)
-          onClose={() => setShowZoomWarning(false)}
-        />
-      )}
+        <Store isOpen={isStoreOpen} onClose={() => setIsStoreOpen(false)} />
 
-      {/* --- SỬA LỖI CÚ PHÁP Ở ĐÂY --- */}
-      {isPixelInfoModalOpen && (
-        <PixelInfoModal
-          pixel={pixelInfo}
-          onClose={() => setIsPixelInfoModalOpen(false)}
-          onStartMultiPaint={handleStartMultiPaint}
-          onToggleFavorite={handleToggleFavorite}
-          isFavorite={favorites.some((p) => p.gx === pixelInfo?.gx && p.gy === pixelInfo?.gy)}
-          onShare={handleShare}
-          onPaint={handleStartPaint} // Thêm prop này nếu PixelInfoModal cần nút Paint
-        />
-      )} 
-      {/* Đã đóng ngoặc cho điều kiện isPixelInfoModalOpen */}
-
-      <SoundSettings isOpen={isSoundOpen} onToggle={() => setIsSoundOpen(!isSoundOpen)} />
-      <OverlayMenu isOpen={isOverlayOpen} onToggle={() => setIsOverlayOpen(!isOverlayOpen)} />
-
-      {/* --- CẬP NHẬT LEADERBOARD & TEAM MODAL --- */}
-      {isLeaderboardOpen && (
-          <Leaderboard 
-              isOpen={isLeaderboardOpen} 
-              onClose={() => setIsLeaderboardOpen(false)} 
-              onTeamClick={handleViewTeamDetails} 
-          />
-      )}
-      
-      {isTeamModalOpen && (
-          <TeamModal 
-              isOpen={isTeamModalOpen} 
-              onClose={handleCloseTeamModal} 
-              teamId={viewingTeamId} 
-              mode={viewingTeamId ? 'details' : 'list'} 
-          />
-      )}
-
-      <ChallengePanel />
-      <Store isOpen={isStoreOpen} onClose={() => setIsStoreOpen(false)} />
-
-      {!isPixelInfoModalOpen && (
-          <PaintControls
-              selectedPixelColor={selectedPixelColor}
-              setSelectedPixelColor={setSelectedPixelColor}
-              pendingPixels={pendingPixels}
-              setPendingPixels={setPendingPixels}
-              canPaint={canPaint}
-              onLoginRequired={openAuthModal}
-              isPaletteVisible={isPaletteVisible}
-              setIsPaletteVisible={setIsPaletteVisible}
-              isPixelInfoModalOpen={isPixelInfoModalOpen}
-          />
-      )}
+        {!isPixelInfoModalOpen && (
+            <PaintControls
+                selectedPixelColor={selectedPixelColor}
+                setSelectedPixelColor={setSelectedPixelColor}
+                pendingPixels={pendingPixels}
+                setPendingPixels={setPendingPixels}
+                canPaint={canPaint}
+                onLoginRequired={openAuthModal}
+                isPaletteVisible={isPaletteVisible}
+                setIsPaletteVisible={setIsPaletteVisible}
+                isPixelInfoModalOpen={isPixelInfoModalOpen}
+            />
+        )}
       </div>
   );
 };

@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import MapControlWrapper from './MapControlWrapper'; 
 import { GRID_HEIGHT, GRID_WIDTH } from '../config/constants';
 
-const OverlayMenu = ({ isOpen, onToggle }) => {
+const OverlayMenu = ({ isOpen, onToggle, inline = false }) => {
   const { overlayData, updateOverlay, isPickingMode, setIsPickingMode } = useOverlay();
   const { currentTeam } = useTeam();
   const { user } = useAuth();
@@ -76,25 +76,33 @@ const OverlayMenu = ({ isOpen, onToggle }) => {
     reader.readAsDataURL(file);
   };
 
+  const containerClass = inline
+    ? 'rail-inline'
+    : 'top-[120px] right-4 flex flex-col items-end';
+
+  const wrapperProps = inline
+    ? { className: containerClass }
+    : { className: containerClass, style: { zIndex: 1200 } };
+
+  const Wrapper = inline ? 'div' : MapControlWrapper;
+
   return (
     // --- CHỈNH VỊ TRÍ: Đẩy lên cao hơn (310px) ---
-    <MapControlWrapper className="top-[310px] right-4 flex flex-col items-end"
-    style={{ zIndex: 1200 }}
-    >
+    <Wrapper {...wrapperProps}>
       <button
         onClick={onToggle}
-        className={`w-10 h-10 rounded-full shadow-md flex items-center justify-center transition-transform active:scale-95 mb-2
-          ${isPickingMode ? 'bg-yellow-400 text-black animate-pulse' : (isOpen ? 'bg-blue-100 ring-2 ring-blue-400' : 'bg-white hover:bg-gray-100')}`}
+        className={`control-button mb-2
+          ${isPickingMode || isOpen ? 'is-active' : ''}`}
         title="Team Template Overlay"
       >
         {/* Icon Ảnh */}
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6zm3 9h10l-3.5-4.2a1 1 0 0 0-1.6 0L7 15zm9.5-6.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z" />
         </svg>
       </button>
 
       {isOpen && (
-        <div className="bg-white/95 backdrop-blur p-4 rounded-xl shadow-2xl border border-gray-200 w-80 animate-fade-in-down cursor-default max-h-[70vh] overflow-y-auto">
+        <div className={`bg-white/95 backdrop-blur p-4 rounded-xl shadow-2xl border border-gray-200 w-80 animate-fade-in-down cursor-default max-h-[70vh] overflow-y-auto ${inline ? "rail-popover" : ""}`}>
           
           <div className="flex justify-between items-center mb-4 border-b pb-2 sticky top-0 bg-white/95 z-10">
             <h3 className="text-sm font-bold text-gray-700">Team Template</h3>
@@ -171,7 +179,7 @@ const OverlayMenu = ({ isOpen, onToggle }) => {
           </div>
         </div>
       )}
-    </MapControlWrapper>
+    </Wrapper>
   );
 };
 

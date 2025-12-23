@@ -25,13 +25,17 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <WalletProvider>
                     <TeamProvider>
                         <VerificationProvider>
-                            <SocketProvider>
-                                <NotificationProvider>
-                                    <ChallengeProvider>
-                                        <App />
-                                    </ChallengeProvider>
-                                </NotificationProvider>
-                            </SocketProvider>
+                            <SoundProvider>
+                                <OverlayProvider>
+                                    <SocketProvider>
+                                        <NotificationProvider>
+                                            <ChallengeProvider>
+                                                <App />
+                                            </ChallengeProvider>
+                                        </NotificationProvider>
+                                    </SocketProvider>
+                                </OverlayProvider>
+                            </SoundProvider>
                         </VerificationProvider>
                     </TeamProvider>
                 </WalletProvider>
