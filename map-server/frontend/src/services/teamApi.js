@@ -91,9 +91,9 @@ export const joinTeam = async (teamId) => {
 };
 
 // Leave current team
-export const leaveTeam = async () => {
+export const leaveTeam = async (newLeaderId = null) => {
   try {
-    const response = await api.post('/teams/leave');
+    const response = await api.post('/teams/leave', newLeaderId ? { newLeaderId } : {});
     return response.data;
   } catch (error) {
     throw error.response?.data || error;

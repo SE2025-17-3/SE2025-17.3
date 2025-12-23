@@ -241,7 +241,7 @@ export const TeamProvider = ({ children }) => {
   }, [isLoggedIn, refreshUser, fetchTeams, currentPage]);
 
   // Leave team
-  const leaveTeam = useCallback(async () => {
+  const leaveTeam = useCallback(async (newLeaderId = null) => {
     if (!isLoggedIn) {
       throw new Error('Must be logged in to leave a team');
     }
@@ -249,7 +249,7 @@ export const TeamProvider = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-      await teamApi.leaveTeam();
+      await teamApi.leaveTeam(newLeaderId);
       
       // Refresh user data from server to clear teamId
       await refreshUser();

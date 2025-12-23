@@ -34,7 +34,13 @@ export default (io, socket) => {
     }
   });
 
-  // 2. Tải thêm tin nhắn cũ (Khi cuộn lên trên)
+    // Subscribe to team room for realtime badge updates (no history)
+  socket.on('chat:subscribe', ({ teamId }) => {
+    if (!teamId) return;
+    socket.join(`team_${teamId}`);
+  });
+
+// 2. Tải thêm tin nhắn cũ (Khi cuộn lên trên)
   socket.on('chat:loadMore', async ({ scope, teamId, oldestMessageId }) => {
     try {
       const query = { scope };
