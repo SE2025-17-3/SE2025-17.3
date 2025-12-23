@@ -80,3 +80,8 @@ reports/
 *.md
 !README.md
 *.sh
+# SSH Keys
+se2025_17_3_pk.se2025_17_3_pk
+se2025_17_3_pk.pub
+*.pem
+*.key
