@@ -4,6 +4,7 @@ import Team from '../models/Team.js';
 import User from '../models/User.js';
 import PixelEvent from '../models/PixelEvent.js';
 import mongoose from 'mongoose';
+import { createNotificationBatch } from '../services/notificationService.js';
 
 // Constants
 const MAX_TEAM_SIZE = 50;
@@ -325,6 +326,69 @@ export const joinTeam = async (req, res) => {
       console.error('joinTeam error:', error);
       res.status(500).json({ message: 'Server error' });
     }
+
+    // Leave current team if in one
+    if (user.teamId) {
+      // Auto-leave current team and decrement its member count
+      await Team.findByIdAndUpdate(user.teamId, { $inc: { memberCount: -1 } });
+      user.teamId = null;
+    }
+
+    // Join new team
+    user.teamId = team._id;
+    await user.save();
+
+    // Increment new team's member count
+    team.memberCount += 1;
+    await team.save();
+
+    console.log(`User ${user.username} (${user._id}) joined team ${team.name} (${team._id})`);
+
+    // Notify other team members about the new member
+    try {
+      const otherMembers = await User.find({ 
+        teamId: team._id, 
+        _id: { $ne: userId } 
+      }).select('_id');
+
+      if (otherMembers.length > 0) {
+        const notifications = otherMembers.map(member => ({
+          userId: member._id,
+          type: 'team_member_joined',
+          title: 'New Team Member',
+          message: `${user.username} joined your team "${team.name}"`,
+          data: {
+            teamId: team._id,
+            teamName: team.name,
+            newMemberId: user._id,
+            newMemberUsername: user.username,
+          },
+        }));
+
+        await createNotificationBatch(notifications);
+        console.log(`📨 Sent ${notifications.length} team_member_joined notifications`);
+      }
+    } catch (notifError) {
+      console.warn('⚠️ Failed to send join notifications:', notifError.message);
+    }
+
+    res.json({
+      message: 'Successfully joined team',
+      team: {
+        _id: team._id,
+        name: team.name,
+        memberCount: team.memberCount,
+      },
+      user: {
+        _id: user._id,
+        username: user.username,
+        teamId: user.teamId,
+      },
+    });
+  } catch (error) {
+    console.error('joinTeam error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
 };
 
 /**
@@ -343,28 +407,57 @@ export const leaveTeam = async (req, res) => {
   
       const team = await Team.findById(user.teamId);
       
-      if (team && team.createdBy.toString() === userId.toString()) {
-        await User.updateMany({ teamId: team._id }, { $set: { teamId: null } });
-        await Team.deleteOne({ _id: team._id });
-        
-        return res.json({ 
-          message: 'You left and deleted the team (as creator)' 
-        });
-      }
-  
-      if (team) {
-        team.memberCount = Math.max(0, team.memberCount - 1);
-        await team.save();
-      }
-  
-      user.teamId = null;
-      await user.save();
-  
-      res.json({ message: 'Successfully left team' });
-    } catch (error) {
-      console.error('leaveTeam error:', error);
-      res.status(500).json({ message: 'Server error' });
+      return res.json({ 
+        message: 'You left and deleted the team (as creator)' 
+      });
     }
+
+    // Regular member leaving - decrement team member count
+    const teamName = team?.name;
+    const teamIdForNotif = team?._id;
+
+    if (team) {
+      team.memberCount = Math.max(0, team.memberCount - 1);
+      await team.save();
+    }
+
+    user.teamId = null;
+    await user.save();
+
+    // Notify remaining team members about the departure
+    if (team) {
+      try {
+        const remainingMembers = await User.find({ 
+          teamId: teamIdForNotif 
+        }).select('_id');
+
+        if (remainingMembers.length > 0) {
+          const notifications = remainingMembers.map(member => ({
+            userId: member._id,
+            type: 'team_member_left',
+            title: 'Team Member Left',
+            message: `${user.username} left your team "${teamName}"`,
+            data: {
+              teamId: teamIdForNotif,
+              teamName: teamName,
+              leftMemberId: user._id,
+              leftMemberUsername: user.username,
+            },
+          }));
+
+          await createNotificationBatch(notifications);
+          console.log(`📨 Sent ${notifications.length} team_member_left notifications`);
+        }
+      } catch (notifError) {
+        console.warn('⚠️ Failed to send leave notifications:', notifError.message);
+      }
+    }
+
+    res.json({ message: 'Successfully left team' });
+  } catch (error) {
+    console.error('leaveTeam error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
 };
 
 /**
