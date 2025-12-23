@@ -109,51 +109,6 @@ graph TD
 - **Tải Dựa Trên Chunk**: Dữ liệu canvas được tải theo chunk 256x256 pixel để tối ưu hiệu suất
 - **Redis Streams**: Xử lý sự kiện tách rời cho notifications với consumer groups
 
-### Kiến Trúc Hệ Thống Thông Báo
-
-```mermaid
-flowchart TB
-    subgraph triggers [Trình Kích Hoạt Sự Kiện]
-        TeamCtrl[Team Controller]
-        ChallengeCtrl[Challenge Service]
-        WalletCtrl[Wallet Service]
-        PaymentCtrl[Payment Service]
-    end
-
-    subgraph outbox [Mẫu Outbox]
-        NotifOutbox[(Notification Outbox)]
-    end
-
-    subgraph streaming [Redis Streams]
-        NotifStream[notifications:events]
-    end
-
-    subgraph consumer [Notification Consumer]
-        NotifConsumer[NotificationConsumer Worker]
-    end
-
-    subgraph delivery [Phân Phối]
-        MongoDB[(Notification Collection)]
-        SocketIO[Socket.IO Push]
-    end
-
-    subgraph client [Client]
-        Browser[Trình Duyệt Người Dùng]
-    end
-
-    TeamCtrl --> NotifOutbox
-    ChallengeCtrl --> NotifOutbox
-    WalletCtrl --> NotifOutbox
-    PaymentCtrl --> NotifOutbox
-    
-    NotifOutbox --> NotifStream
-    NotifStream --> NotifConsumer
-    NotifConsumer --> MongoDB
-    NotifConsumer --> |Chỉ loại Push| SocketIO
-    SocketIO --> Browser
-    Browser --> |Loại Pull| MongoDB
-```
-
 ---
 
 ## 🚀 Tính Năng Chính
@@ -301,7 +256,7 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ## 📁 Cấu Trúc Dự Án
 
-```
+```text
 map-server/
 ├── backend/
 │   ├── src/
@@ -328,7 +283,7 @@ map-server/
 │   │   │   └── notificationService.js
 │   │   ├── socket/          # Xử lý sự kiện Socket.IO
 │   │   ├── utils/           # Các hàm tiện ích (Helpers)
-│   │   └── workers/         # Xử lý tác vụ nền (Background Jobs)
+│   │   ├── workers/         # Xử lý tác vụ nền (Background Jobs)
 │   │       ├── outboxPublisher.js     # Outbox -> Redis Stream
 │   │       ├── streamConsumer.js      # Xử lý pixel event
 │   │       └── notificationConsumer.js # Xử lý phân phối thông báo
@@ -355,7 +310,6 @@ map-server/
 │
 └── docker-compose.yml       # Docker Orchestration
 ```
-
 ---
 
 ## 🔌 Tổng Quan API
