@@ -2,7 +2,7 @@ import { getSubscriber, STREAMS, CONSUMER_GROUPS, isRedisEnabled } from '../conf
 import { saveNotification } from '../services/notificationService.js';
 
 // Push types - emit to Socket.IO immediately
-const PUSH_TYPES = ['droplets_earned', 'droplets_spent', 'payment_success'];
+const PUSH_TYPES = ['droplets_earned', 'droplets_spent', 'payment_success', 'pixel_overwritten'];
 
 /**
  * Notification Consumer

@@ -6,8 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTeam } from '../context/TeamContext';
 
 const ChatBox = () => {
-  // --- SỬA LỖI TẠI ĐÂY ---
-  const socket = useSocket(); // Không dùng { socket }
+  const socket = useSocket();
   // -----------------------
   
   const { user, isLoggedIn } = useAuth();
@@ -19,9 +18,17 @@ const ChatBox = () => {
   const [activeTab, setActiveTab] = useState('global');
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [teamUnread, setTeamUnread] = useState(0);
 
   const messagesContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
+
+  const formatTime = (value) => {
+    if (!value) return '';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -45,11 +52,16 @@ const ChatBox = () => {
     };
 
     const handleReceive = (msg) => {
-      const isCorrectScope = (activeTab === 'global' && msg.scope === 'global') ||
-                             (activeTab === 'team' && msg.scope === 'team' && msg.teamId === currentTeam?._id);
+      const isGlobal = msg.scope === 'global';
+      const isTeam = msg.scope === 'team' && msg.teamId === currentTeam?._id;
+      const isCorrectScope = (activeTab === 'global' && isGlobal) ||
+                             (activeTab === 'team' && isTeam);
       if (isCorrectScope) {
         setMessages((prev) => [...prev, msg]);
         setTimeout(scrollToBottom, 50);
+      }
+      if (isTeam && activeTab !== 'team') {
+        setTeamUnread((prev) => prev + 1);
       }
     };
 
@@ -84,10 +96,17 @@ const ChatBox = () => {
     };
   }, [socket, activeTab, currentTeam, isLoggedIn]);
 
+  useEffect(() => {
+    if (activeTab === 'team' && isOpen) {
+      setTeamUnread(0);
+    }
+  }, [activeTab, isOpen]);
+
   // 2. Gửi tin nhắn
   const handleSend = (e) => {
     e.preventDefault();
     if (!input.trim()) return;
+    if (activeTab === 'team' && !currentTeam) return;
 
     // Giờ socket đã tồn tại, dòng này sẽ chạy tốt
     socket.emit('chat:send', {
@@ -113,6 +132,8 @@ const ChatBox = () => {
 
   if (!isLoggedIn) return null;
 
+  const teamBadge = teamUnread > 9 ? '9+' : teamUnread > 0 ? String(teamUnread) : '';
+
   return (
     <div 
         className="fixed bottom-24 left-4 z-[1100] flex flex-col items-start font-sans"
@@ -123,9 +144,14 @@ const ChatBox = () => {
     >
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="mb-2 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg transition-transform active:scale-95"
+        className="relative mb-2 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg transition-transform active:scale-95"
       >
         💬
+        {teamBadge && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+            {teamBadge}
+          </span>
+        )}
       </button>
 
       {isOpen && (
@@ -135,15 +161,20 @@ const ChatBox = () => {
               className={`flex-1 py-2 text-sm font-bold ${activeTab === 'global' ? 'bg-white text-blue-600 border-t-2 border-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}
               onClick={() => setActiveTab('global')}
             >
-              Thế giới
+              Global
             </button>
             <button 
               className={`flex-1 py-2 text-sm font-bold ${activeTab === 'team' ? 'bg-white text-blue-600 border-t-2 border-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}
               onClick={() => setActiveTab('team')}
               disabled={!currentTeam}
-              title={!currentTeam ? "Gia nhập team để chat" : ""}
+              title={!currentTeam ? "Join a team to chat" : ""}
             >
-              Team {currentTeam ? "" : "(🔒)"}
+              Team {currentTeam ? "" : "(off)"}
+              {teamBadge && (
+                <span className="ml-2 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] inline-flex items-center justify-center px-1 align-middle">
+                  {teamBadge}
+                </span>
+              )}
             </button>
           </div>
 
@@ -155,21 +186,29 @@ const ChatBox = () => {
             {isLoadingMore && <div className="text-center text-xs text-gray-400 py-1">Đang tải tin cũ...</div>}
             
             {messages.map((msg, index) => {
-              const isMe = msg.sender._id === user._id;
+              const sender = msg?.sender;
+              const senderId = sender?._id;
+              const isMe = senderId && user?._id ? senderId === user._id : false;
+              const displayName = sender?.displayName || 'Nguoi dung';
+              const avatarUrl = sender?.avatarUrl || '/default-avatar.png';
+              const timeLabel = formatTime(msg.createdAt || msg.timestamp || msg.sentAt);
               return (
                 <div key={msg._id || index} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                   <div className="flex items-center gap-1 mb-1">
                     {!isMe && (
                       <img 
-                        src={msg.sender.avatarUrl || '/default-avatar.png'} 
+                        src={avatarUrl} 
                         className="w-4 h-4 rounded-full" 
                         alt="ava" 
                         onError={(e) => e.target.src = '/default-avatar.png'}
                       />
                     )}
                     <span className="text-[10px] text-gray-500 font-bold">
-                      {isMe ? 'Bạn' : msg.sender.displayName}
+                      {isMe ? 'Ban' : displayName}
                     </span>
+                    {timeLabel && (
+                      <span className="text-[10px] text-gray-400">{timeLabel}</span>
+                    )}
                   </div>
                   <div className={`max-w-[85%] px-3 py-2 rounded-lg text-sm break-words ${isMe ? 'bg-blue-500 text-white rounded-tr-none' : 'bg-white border border-gray-200 text-gray-800 rounded-tl-none shadow-sm'}`}>
                     {msg.content}

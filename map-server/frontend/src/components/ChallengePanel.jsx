@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useWallet } from '../context/WalletContext';
 import './ChallengePanel.css';
 
-const ChallengePanel = () => {
+const ChallengePanel = ({ inline = false }) => {
   const { challenges, stats, loading, refreshChallenges } = useChallenge();
   const { isLoggedIn, user, refreshUser } = useAuth();
   const { refreshWallet } = useWallet();
@@ -51,7 +51,7 @@ const ChallengePanel = () => {
   if (!isOpen) {
     return (
       <button 
-        className="challenge-toggle-btn" 
+        className={`control-button ${inline ? "challenge-toggle-inline" : "challenge-toggle-btn"}`} 
         onClick={() => setIsOpen(true)}
         title="Daily Challenges"
       >

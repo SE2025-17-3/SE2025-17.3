@@ -61,3 +61,21 @@
 .profile-menu button:hover {
     background-color: #f9fafb;
 }
+
+.profile-container.compact .profile-header {
+    padding: 6px;
+    border-radius: 18px;
+    width: 54px;
+    height: 54px;
+    justify-content: center;
+    background: linear-gradient(180deg, #ffffff 0%, #e9edf4 100%);
+    border: 1px solid rgba(9, 18, 36, 0.08);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+}
+
+.profile-container.compact .avatar {
+    margin-right: 0;
+    width: 36px;
+    height: 36px;
+    border: none;
+}

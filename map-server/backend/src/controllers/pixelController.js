@@ -4,6 +4,7 @@ import PixelEvent from '../models/PixelEvent.js';
 import Outbox from '../models/Outbox.js';
 import User from '../models/User.js';
 import { calculateEnergy } from './authController.js';
+import { createNotificationBatch } from '../services/notificationService.js';
 
 // Bây giờ getRedisClient đã có trong file config nên import này sẽ KHÔNG lỗi nữa
 import { getRedisClient, getPublisher, STREAMS } from '../config/redis.js';
@@ -88,10 +89,23 @@ export const addPixel = async (req, res, io) => {
         const bulkOps = [];
         const logs = [];
         const chunksToClear = new Set();
+        const notifications = [];
 
         const redis = getRedisClient();
         const redisPublisher = getPublisher();
         const timestamp = Date.now();
+        const coords = payload
+            .map(p => ({ gx: Number(p.gx), gy: Number(p.gy) }))
+            .filter(p => !isNaN(p.gx) && !isNaN(p.gy));
+
+        const existingPixels = coords.length > 0
+            ? await Pixel.find({ $or: coords }).select('gx gy color userId').lean()
+            : [];
+
+        const existingMap = new Map(
+            existingPixels.map(p => [`${p.gx}:${p.gy}`, p])
+        );
+
 
         for (const p of payload) {
             const gx = Number(p.gx);
@@ -101,6 +115,23 @@ export const addPixel = async (req, res, io) => {
             if (isNaN(gx) || isNaN(gy)) continue;
 
             logs.push({ gx, gy, color, userId, teamId: user.teamId });
+            const prev = existingMap.get(`${gx}:${gy}`);
+            if (prev?.userId && prev.userId.toString() !== userId.toString()) {
+                const isErased = color === 'transparent';
+                const isChanged = !isErased && prev.color !== color;
+                if (isErased || isChanged) {
+                    const actor = user.displayName || user.username || 'Someone';
+                    const actionText = isErased ? 'erased' : 'changed';
+                    notifications.push({
+                        userId: prev.userId,
+                        type: 'pixel_overwritten',
+                        title: 'Pixel update',
+                        message: `${actor} ${actionText} your pixel at (${gx}, ${gy}).`,
+                        data: { gx, gy, color, previousColor: prev.color, byUserId: userId }
+                    });
+                }
+            }
+
 
             if (color === 'transparent') {
                 bulkOps.push({
@@ -144,6 +175,12 @@ export const addPixel = async (req, res, io) => {
             await Pixel.bulkWrite(bulkOps);
             PixelEvent.insertMany(logs).catch((e) =>
                 console.error('PixelEvent log error:', e)
+            );
+        }
+
+        if (notifications.length > 0) {
+            createNotificationBatch(notifications).catch((e) =>
+                console.error('Pixel notification error:', e)
             );
         }
 
