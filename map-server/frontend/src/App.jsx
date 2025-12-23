@@ -19,6 +19,8 @@ import ZoomToPaintButton from './components/ZoomToPaintButton.jsx';
 import ZoomWarningToast from './components/ZoomWarningToast.jsx';
 import FavoriteMarkers from './components/FavoriteMarkers.jsx';
 import LocationButton from './components/LocationButton.jsx';
+import NotificationBell from './components/NotificationBell.jsx';
+import NotificationToast from './components/NotificationToast.jsx';
 import MapControlWrapper from './components/MapControlWrapper.jsx';
 
 /* Admin / Advanced */
@@ -338,6 +340,7 @@ const App = () => {
             />
             <FavoriteMarkers favorites={favorites} />
         <MapControlWrapper className="right-rail" style={{ zIndex: 1200 }}>
+          <NotificationBell />
           <AuthControls />
           <AuxiliaryButtons
             openLeaderboard={() => setIsLeaderboardOpen(true)}
@@ -357,6 +360,7 @@ const App = () => {
         </div>
 
         <ChatBox />
+        <NotificationToast />
         <AdminManager onStartWipe={() => setIsWipeMode(true)} />
 
 

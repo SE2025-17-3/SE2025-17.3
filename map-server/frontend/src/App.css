@@ -51,7 +51,7 @@ body,
 .rail-popover {
   position: absolute;
   right: 72px;
-  top: -60px;
+  top: -250px;
   z-index: 1300;
 }
 
