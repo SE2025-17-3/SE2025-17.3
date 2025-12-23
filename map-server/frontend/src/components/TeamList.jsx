@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useTeam } from '../context/TeamContext';
 import { useAuth } from '../context/AuthContext';
 
-const TeamList = ({ onTeamClick, onCreateTeam }) => {
+const TeamList = ({ onTeamClick, onCreateTeam, onJoinedTeam }) => {
   const { teams, loading, error, totalPages, currentPage, fetchTeams, searchTeams, joinTeam, currentTeam } = useTeam();
   const { isLoggedIn } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
@@ -52,8 +52,11 @@ const TeamList = ({ onTeamClick, onCreateTeam }) => {
 
     try {
       setJoiningTeamId(teamId);
-      await joinTeam(teamId);
+      const data = await joinTeam(teamId);
       alert('Successfully joined team!');
+      if (onJoinedTeam) {
+        onJoinedTeam(data?.team?._id || teamId);
+      }
     } catch (err) {
       alert(err.message || 'Failed to join team');
     } finally {
