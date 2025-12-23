@@ -22,6 +22,8 @@ import FavoriteMarkers from './components/FavoriteMarkers.jsx';
 import LocationButton from './components/LocationButton.jsx';
 import ChallengePanel from './components/ChallengePanel.jsx';
 import Store from './components/Store.jsx';
+import NotificationBell from './components/NotificationBell.jsx';
+import NotificationToast from './components/NotificationToast.jsx';
 
 // Services & Contexts
 import { useAuth } from './context/AuthContext.jsx';
@@ -146,9 +148,12 @@ const MapZoomController = ({ setCanPaint, onLoginRequired }) => {
 const AuthControls = () => {
   const { isLoggedIn, user, openAuthModal } = useAuth();
   return (
-    <div className="absolute top-4 right-4 z-[1200] auth-controls-ignore">
+    <div className="absolute top-4 right-4 z-[1200] auth-controls-ignore flex items-center gap-3">
       {isLoggedIn && user ? (
-        <Profile />
+        <>
+          <NotificationBell />
+          <Profile />
+        </>
       ) : (
         <button
           onClick={openAuthModal}
@@ -318,6 +323,9 @@ const App = () => {
 
   return (
     <div style={{ position: 'relative', height: '100vh', width: '100vw' }}>
+      {/* Notification Toasts */}
+      <NotificationToast />
+      
       {isAuthModalOpen && <AuthModal onClose={closeAuthModal} />}
       {isVerificationRequired && <VerificationModal />}
 

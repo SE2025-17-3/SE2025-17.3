@@ -15,6 +15,7 @@ import { TeamProvider } from './context/TeamContext.jsx';
 import { VerificationProvider } from './context/VerificationContext.jsx';
 import { ChallengeProvider } from './context/ChallengeContext.jsx';
 import { WalletProvider } from './context/WalletContext.jsx';
+import { NotificationProvider } from './context/NotificationContext.jsx';
 
 // Lấy Key từ biến môi trường
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_V2_SITE_KEY;
@@ -32,9 +33,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                     <TeamProvider>
                         <VerificationProvider>
                             <SocketProvider>
-                                <ChallengeProvider>
-                                    <App />
-                                </ChallengeProvider>
+                                <NotificationProvider>
+                                    <ChallengeProvider>
+                                        <App />
+                                    </ChallengeProvider>
+                                </NotificationProvider>
                             </SocketProvider>
                         </VerificationProvider>
                     </TeamProvider>
