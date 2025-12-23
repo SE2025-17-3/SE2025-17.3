@@ -6,6 +6,8 @@ import UserStreak from '../models/UserStreak.js';
 import User from '../models/User.js';
 import moment from 'moment-timezone';
 import { createNotification } from './notificationService.js';
+import * as walletService from './walletService.js';
+import Badge from '../models/Badge.js';
 
 /**
  * Get or create today's challenges for a user
@@ -337,7 +339,7 @@ export const claimChallengeReward = async (userId, userChallengeId) => {
         userId
       };
     });
-    
+
     // Create notifications for new badges (outside transaction)
     if (result.newBadges && result.newBadges.length > 0) {
       for (const badge of result.newBadges) {
@@ -359,10 +361,10 @@ export const claimChallengeReward = async (userId, userChallengeId) => {
         }
       }
     }
-    
+
     // Remove userId from result before returning
     delete result.userId;
-    
+
     return result;
   } catch (error) {
     throw new Error(`Failed to claim reward: ${error.message}`);
