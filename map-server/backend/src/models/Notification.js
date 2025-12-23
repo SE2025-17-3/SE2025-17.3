@@ -23,6 +23,7 @@ const notificationSchema = new mongoose.Schema({
       'droplets_spent',
       'payment_success',
       'badge_earned',
+      'pixel_overwritten',
     ],
     index: true,
   },
