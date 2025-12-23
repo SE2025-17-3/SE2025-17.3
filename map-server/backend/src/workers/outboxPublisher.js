@@ -99,26 +99,37 @@ class OutboxPublisher {
   async publishEvent(event) {
     const { _id, eventType, payload } = event;
 
-    const streamId = await this.redis.xadd(
+    let streamId;
+
+    if (eventType === 'pixel_placed') {
+      // Publish pixel event to PIXEL_EVENTS stream
+      streamId = await this.redis.xadd(
         STREAMS.PIXEL_EVENTS,
         '*',
-        'eventType',
-        eventType,
-        'gx',
-        payload.gx,
-        'gy',
-        payload.gy,
-        'color',
-        payload.color,
-        'timestamp',
-        payload.timestamp || Date.now(),
-        'outboxId',
-        _id.toString()
-    );
-
-    console.log(
-        `📡 Published event ${_id} → Stream ${STREAMS.PIXEL_EVENTS} (${streamId})`
-    );
+        'eventType', eventType,
+        'gx', payload.gx,
+        'gy', payload.gy,
+        'color', payload.color,
+        'timestamp', payload.timestamp || Date.now(),
+        'outboxId', _id.toString(),
+      );
+      console.log(`📡 Published to Redis Stream: ${streamId} - Pixel (${payload.gx}, ${payload.gy})`);
+    } else if (eventType === 'notification') {
+      // Publish notification event to NOTIFICATIONS stream
+      streamId = await this.redis.xadd(
+        STREAMS.NOTIFICATIONS,
+        '*',
+        'eventType', eventType,
+        'userId', payload.userId,
+        'type', payload.type,
+        'title', payload.title,
+        'message', payload.message,
+        'data', JSON.stringify(payload.data || {}),
+        'timestamp', payload.timestamp || Date.now(),
+        'outboxId', _id.toString(),
+      );
+      console.log(`🔔 Published notification to Redis Stream: ${streamId} - ${payload.type} for user ${payload.userId}`);
+    }
 
     await Outbox.markAsPublished(_id);
   }

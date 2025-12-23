@@ -1,12 +1,12 @@
 // map-server\backend\src\services\challengeService.js
 import mongoose from 'mongoose';
-import moment from 'moment-timezone'; 
+import moment from 'moment-timezone';
 import Challenge from '../models/Challenge.js';
 import UserChallenge from '../models/UserChallenge.js';
 import UserStreak from '../models/UserStreak.js';
 import User from '../models/User.js';
-import Badge from '../models/Badge.js';
-import * as walletService from './walletService.js';
+import moment from 'moment-timezone';
+import { createNotification } from './notificationService.js';
 
 /**
  * Get or create today's challenges for a user
@@ -102,7 +102,7 @@ export const trackPixelAction = async (userId, pixelData, io) => {
     });
 
     if (userChallenge) {
-      userChallenge.progress += 1;
+      userChallenge.progress += pixelData.length;
 
       // Check if challenge is completed
       if (userChallenge.progress >= challenge.goal.count && !userChallenge.completed) {
@@ -114,13 +114,30 @@ export const trackPixelAction = async (userId, pixelData, io) => {
           $inc: { challengePoints: challenge.reward.points }
         });
 
-        // Emit event to user
+        // Emit event to user (legacy Socket.IO event)
         if (io) {
           io.to(`user:${userId}`).emit('challenge_completed', {
             challengeId: challenge._id,
             title: challenge.title,
             points: challenge.reward.points
           });
+        }
+
+        // Create notification (pull-based, persisted)
+        try {
+          await createNotification({
+            userId,
+            type: 'challenge_completed',
+            title: 'Challenge Completed!',
+            message: `You completed "${challenge.title}" and earned ${challenge.reward.points} points!`,
+            data: {
+              challengeId: challenge._id,
+              challengeTitle: challenge.title,
+              points: challenge.reward.points,
+            },
+          });
+        } catch (notifError) {
+          console.warn('⚠️ Failed to create challenge notification:', notifError.message);
         }
       }
 
@@ -238,33 +255,33 @@ export const getUserChallengeStats = async (userId) => {
  */
 export const claimChallengeReward = async (userId, userChallengeId) => {
   const session = await mongoose.startSession();
-  
+
   try {
     let result;
-    
+
     await session.withTransaction(async () => {
       // 1. Get user challenge
       const userChallenge = await UserChallenge.findById(userChallengeId)
         .populate('challengeId')
         .session(session);
-      
+
       if (!userChallenge || userChallenge.userId.toString() !== userId.toString()) {
         throw new Error('Challenge not found or unauthorized');
       }
-      
+
       if (!userChallenge.completed) {
         throw new Error('Challenge not completed yet');
       }
-      
+
       if (userChallenge.rewardClaimed) {
         throw new Error('Reward already claimed');
       }
-      
+
       // 2. Get user
       const user = await User.findById(userId).session(session);
       const challenge = userChallenge.challengeId;
       const points = challenge.reward.points;
-      
+
       // 3. Award droplets
       // Note: walletService.addDroplets might create its own transaction/session inside.
       // If it supports passing session, we should pass it. Assuming it handles its own logic:
@@ -278,21 +295,21 @@ export const claimChallengeReward = async (userId, userChallengeId) => {
           points
         }
       );
-      
+
       // 4. Update user challenge points and total
       user.challengePoints = (user.challengePoints || 0) + points;
       user.totalChallengesCompleted = (user.totalChallengesCompleted || 0) + 1;
-      
+
       // 5. Update streak logic (simplified for claim action)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const lastDate = user.lastChallengeDate ? new Date(user.lastChallengeDate) : null;
       if (lastDate) lastDate.setHours(0, 0, 0, 0);
-      
+
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
-      
+
       // Only increment streak if not already done today
       if (!lastDate || lastDate.getTime() === yesterday.getTime()) {
         user.challengeStreak = (user.challengeStreak || 0) + 1;
@@ -300,26 +317,52 @@ export const claimChallengeReward = async (userId, userChallengeId) => {
         // Reset streak if missed days
         user.challengeStreak = 1;
       }
-      
+
       user.lastChallengeDate = today;
-      
+
       // 6. Check badges
       const newBadges = await checkAndAwardBadges(user, session);
-      
+
       // 7. Save
       userChallenge.rewardClaimed = true;
       userChallenge.claimedAt = new Date();
       await userChallenge.save({ session });
       await user.save({ session });
-      
+
       result = {
         success: true,
         dropletsAwarded: points,
         totalPoints: user.challengePoints,
         currentStreak: user.challengeStreak,
-        newBadges
+        newBadges,
+        userId
       };
     });
+    
+    // Create notifications for new badges (outside transaction)
+    if (result.newBadges && result.newBadges.length > 0) {
+      for (const badge of result.newBadges) {
+        try {
+          await createNotification({
+            userId: result.userId,
+            type: 'badge_earned',
+            title: 'New Badge Earned!',
+            message: `Congratulations! You earned the "${badge.name}" badge!`,
+            data: {
+              badgeId: badge._id,
+              badgeName: badge.name,
+              badgeKey: badge.key,
+              badgeDescription: badge.description,
+            },
+          });
+        } catch (notifError) {
+          console.warn('⚠️ Failed to create badge notification:', notifError.message);
+        }
+      }
+    }
+    
+    // Remove userId from result before returning
+    delete result.userId;
     
     return result;
   } catch (error) {
@@ -332,11 +375,11 @@ export const claimChallengeReward = async (userId, userChallengeId) => {
 const checkAndAwardBadges = async (user, session) => {
   const newBadges = [];
   const streak = user.challengeStreak || 0;
-  
+
   const badges = await Badge.find({}).session(session);
   const badgeMap = {};
   badges.forEach(b => badgeMap[b.key] = b);
-  
+
   // Logic check badge
   const awardBadge = (key) => {
     if (badgeMap[key] && !user.badges.some(b => b.equals(badgeMap[key]._id))) {
@@ -347,6 +390,6 @@ const checkAndAwardBadges = async (user, session) => {
 
   if (streak >= 7) awardBadge('week_warrior');
   if (streak >= 30) awardBadge('month_master');
-  
+
   return newBadges;
 };

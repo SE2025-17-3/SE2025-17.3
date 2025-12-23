@@ -17,6 +17,7 @@ import challengeRoutes from './routes/challengeRoutes.js';
 import walletRoutes from './routes/walletRoutes.js';
 import storeRoutes from './routes/storeRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 
 const app = express();
 
@@ -74,6 +75,7 @@ app.configureRoutes = (io) => {
   app.use('/api/wallet', walletRoutes);
   app.use('/api/store', storeRoutes);
   app.use('/api/payments', paymentRoutes);
+  app.use('/api/notifications', notificationRoutes);
 
   // API 404 handler
   app.use(/\/api\/.*/, (req, res) => {
