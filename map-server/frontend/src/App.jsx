@@ -243,30 +243,18 @@ const App = () => {
         />
       )}
 
-{isPixelInfoModalOpen && (
-  <>
-    <PixelInfoModal
-      pixel={pixelInfo}
-      onClose={() => setIsPixelInfoModalOpen(false)}
-      onStartMultiPaint={handleStartMultiPaint}
-      onToggleFavorite={handleToggleFavorite}
-      isFavorite={favorites.some(
-        (p) => p.gx === pixelInfo?.gx && p.gy === pixelInfo?.gy
-      )}
-      onShare={handleShare}
-    />
+      {isPixelInfoModalOpen && (
+        <PixelInfoModal
+          pixel={pixelInfo}
+          onClose={() => setIsPixelInfoModalOpen(false)}
+          onStartMultiPaint={handleStartMultiPaint}
+          onToggleFavorite={handleToggleFavorite}
+          isFavorite={favorites.some((p) => p.gx === pixelInfo?.gx && p.gy === pixelInfo?.gy)}
+          onShare={handleShare}
+        />
 
-    <SoundSettings
-      isOpen={isSoundOpen}
-      onToggle={() => setIsSoundOpen(!isSoundOpen)}
-    />
-
-    <OverlayMenu
-      isOpen={isOverlayOpen}
-      onToggle={() => setIsOverlayOpen(!isOverlayOpen)}
-    />
-  </>
-)}
+        <SoundSettings isOpen={isSoundOpen} onToggle={() => setIsSoundOpen(!isSoundOpen)} />
+        <OverlayMenu isOpen={isOverlayOpen} onToggle={() => setIsOverlayOpen(!isOverlayOpen)} />
 
         {/* --- CẬP NHẬT LEADERBOARD & TEAM MODAL --- */}
         {isLeaderboardOpen && (
