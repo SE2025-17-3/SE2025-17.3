@@ -6,7 +6,7 @@ import { useWallet } from '../context/WalletContext';
 import './ChallengePanel.css';
 
 const ChallengePanel = ({ inline = false }) => {
-  const { challenges, stats, loading, refreshChallenges } = useChallenge();
+  const { challenges, stats, loading, refreshChallenges, updateChallengeLocally } = useChallenge();
   const { isLoggedIn, user, refreshUser } = useAuth();
   const { refreshWallet } = useWallet();
   const [isOpen, setIsOpen] = useState(false); // Trạng thái mở/đóng
@@ -27,15 +27,22 @@ const ChallengePanel = ({ inline = false }) => {
       const data = await response.json();
 
       if (data.success) {
+        // Immediately update local state to show "Claimed" badge
+        updateChallengeLocally(userChallengeId, { rewardClaimed: true, claimedAt: new Date().toISOString() });
+
         alert(`✅ Claimed ${data.dropletsAwarded} droplets!`);
         if (data.newBadges && data.newBadges.length > 0) {
           data.newBadges.forEach(badge => {
             alert(`🏆 New Badge Earned: ${badge.name} ${badge.icon}`);
           });
         }
-        await refreshChallenges();
-        await refreshUser();
-        await refreshWallet();
+
+        // Refresh data from server in background (with small delay to ensure DB transaction committed)
+        setTimeout(async () => {
+          await refreshChallenges();
+          await refreshUser();
+          await refreshWallet();
+        }, 100);
       } else {
         alert(`❌ ${data.message}`);
       }
@@ -50,8 +57,8 @@ const ChallengePanel = ({ inline = false }) => {
   // Nếu chưa mở -> Hiện nút bấm nhỏ
   if (!isOpen) {
     return (
-      <button 
-        className={`control-button ${inline ? "challenge-toggle-inline" : "challenge-toggle-btn"}`} 
+      <button
+        className={`control-button ${inline ? "challenge-toggle-inline" : "challenge-toggle-btn"}`}
         onClick={() => setIsOpen(true)}
         title="Daily Challenges"
       >

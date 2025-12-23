@@ -73,6 +73,8 @@ export const getTodayChallenges = async (userId) => {
       progress: userChallenge.progress,
       completed: userChallenge.completed,
       completedAt: userChallenge.completedAt,
+      rewardClaimed: userChallenge.rewardClaimed || false,
+      claimedAt: userChallenge.claimedAt,
       goal: challenge.goal.count
     });
   }

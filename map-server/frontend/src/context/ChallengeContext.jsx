@@ -17,7 +17,7 @@ export const useChallenge = () => {
 export const ChallengeProvider = ({ children }) => {
   const { isLoggedIn, user } = useAuth();
   const socket = useSocket();
-  
+
   const [challenges, setChallenges] = useState([]);
   const [stats, setStats] = useState({
     points: 0,
@@ -95,12 +95,24 @@ export const ChallengeProvider = ({ children }) => {
     }
   };
 
+  // Update a specific challenge locally (for optimistic updates)
+  const updateChallengeLocally = (challengeId, updates) => {
+    setChallenges(prev =>
+      prev.map(challenge =>
+        challenge._id === challengeId
+          ? { ...challenge, ...updates }
+          : challenge
+      )
+    );
+  };
+
   const value = {
     challenges,
     stats,
     loading,
     refreshChallenges: fetchChallenges,
-    refreshStats: fetchStats
+    refreshStats: fetchStats,
+    updateChallengeLocally
   };
 
   return (
