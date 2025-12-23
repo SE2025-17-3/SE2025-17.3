@@ -1,3 +1,4 @@
+// map-server/frontend/src/components/PaymentSuccess.jsx
 import React, { useEffect, useState } from 'react';
 import { useWallet } from '../context/WalletContext';
 import './PaymentSuccess.css';

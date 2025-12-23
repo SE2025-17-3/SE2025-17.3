@@ -1,4 +1,4 @@
-// D:\Code\SE2025-17.3\map-server\frontend\src\services\pixelApi.js
+// map-server/frontend/src/services/pixelApi.js
 import api from './api';
 
 export const getPixelDetail = async (gx, gy) => {
