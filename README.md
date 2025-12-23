@@ -327,15 +327,6 @@ map-server/
 | `/api/notifications/*` | Mixed | Quản lý thông báo & Trạng thái đọc |
 | `/api/admin/*` | Mixed | Các tác vụ quản trị hệ thống (Protected Route) |
 
-### Các Endpoint API Thông Báo
-
-| Endpoint | Method | Chức Năng |
-|----------|--------|-----------|
-| `/api/notifications` | GET | Truy xuất danh sách thông báo (hỗ trợ phân trang) |
-| `/api/notifications/unread-count` | GET | Lấy tổng số lượng thông báo chưa đọc |
-| `/api/notifications/:id/read` | PATCH | Cập nhật trạng thái "Đã đọc" cho một thông báo cụ thể |
-| `/api/notifications/read-all` | PATCH | Đánh dấu "Đã đọc" cho toàn bộ thông báo hiện có |
-
 ---
 
 ## 🌐 Triển Khai Trực Tiếp
