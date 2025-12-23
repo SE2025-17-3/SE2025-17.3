@@ -16,7 +16,7 @@ const locationIcon = L.divIcon({
   iconAnchor: [20, 20], // Điểm neo ở chính giữa
 });
 
-const LocationButton = () => {
+const LocationButton = ({ inline = false }) => {
   const map = useMap();
   const [position, setPosition] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -57,29 +57,28 @@ const LocationButton = () => {
     );
   };
 
+  const containerClass = inline ? 'rail-inline' : 'map-location-control';
+
   return (
     <>
-      {/* 1. Nút bấm ở góc phải dưới */}
-      <div className="absolute bottom-24 right-4 z-[1000]">
+      {/* 1. Nut bam o goc phai duoi */}
+      <div className={containerClass}>
         <button
           onClick={handleLocate}
-          className="bg-white hover:bg-gray-100 text-gray-700 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-transform active:scale-95"
-          title="Vị trí của tôi"
+          className="control-button location-button"
+          title="Vi tri cua toi"
         >
           {loading ? (
-            // Icon loading xoay vòng
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+            <div className="spinner"></div>
           ) : (
-            // Icon Location (Target)
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 2a10 10 0 0 1 7.07 17.07l-4.24 4.24a2 2 0 0 1-2.83 0l-4.24-4.24A10 10 0 0 1 12 2zm0 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />
             </svg>
           )}
         </button>
       </div>
 
-      {/* 2. Marker hiển thị vị trí (nếu đã tìm thấy) */}
+      {/* 2. Marker hien thi vi tri (neu tim thay) */}
       {position && (
         <Marker position={position} icon={locationIcon} />
       )}

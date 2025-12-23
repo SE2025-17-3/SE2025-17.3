@@ -4,25 +4,33 @@ import React from 'react';
 import { useSound } from '../context/SoundContext';
 import MapControlWrapper from './MapControlWrapper';
 
-const SoundSettings = ({ isOpen, onToggle }) => {
+const SoundSettings = ({ isOpen, onToggle, inline = false }) => {
     const { bgmMuted, setBgmMuted, bgmVolume, setBgmVolume, sfxMuted, setSfxMuted } = useSound();
 
+    const containerClass = inline
+        ? 'rail-inline'
+        : 'top-[550px] right-4 flex flex-col items-end';
+
+    const wrapperProps = inline
+        ? { className: containerClass }
+        : { className: containerClass, style: { zIndex: 1200 } };
+
+    const Wrapper = inline ? 'div' : MapControlWrapper;
+
     return (
-        <MapControlWrapper className="top-[360px] right-4 flex flex-col items-end"
-        style={{ zIndex: 1200 }}
-        >
+        <Wrapper {...wrapperProps}>
             <button
                 onClick={onToggle}
-                className={`w-10 h-10 rounded-full shadow-md flex items-center justify-center transition-transform active:scale-95 mb-2 ${isOpen ? 'bg-blue-100 ring-2 ring-blue-400' : 'bg-white hover:bg-gray-100'}`}
+                className={`control-button mb-2 ${isOpen ? 'is-active' : ''}`}
                 title="Sound Settings"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M9 19V6l12-3v13M9 19c0 1.1-1.3 2-3 2s-3-.9-3-2 1.3-2 3-2 3 .9 3 2zm12-3c0 1.1-1.3 2-3 2s-3-.9-3-2 1.3-2 3-2 3 .9 3 2zM9 10l12-3" />
                 </svg>
             </button>
 
             {isOpen && (
-                <div className="bg-white/95 backdrop-blur p-4 rounded-xl shadow-xl border border-gray-200 w-64 animate-fade-in-down cursor-default">
+                <div className={`bg-white/95 backdrop-blur p-4 rounded-xl shadow-xl border border-gray-200 w-64 animate-fade-in-down cursor-default ${inline ? "rail-popover" : ""}`}>
                     <h3 className="text-sm font-bold text-gray-700 mb-3 border-b pb-2">Âm thanh</h3>
                     
                     <div className="mb-4">
@@ -39,7 +47,7 @@ const SoundSettings = ({ isOpen, onToggle }) => {
                     </div>
                 </div>
             )}
-        </MapControlWrapper>
+        </Wrapper>
     );
 };
 

@@ -3,26 +3,20 @@
 /* Nút bấm tròn nhỏ khi đóng */
 .challenge-toggle-btn {
   position: absolute;
-  top: 460px; 
-  right: 16px;
-  width: 45px;
-  height: 45px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #FF9F1C, #FF6B6B);
-  color: white;
-  font-size: 24px;
-  border: none;
-  cursor: pointer;
+  top: 440px; 
+  right: 18px;
+  font-size: 22px;
+  color: var(--ui-ink);
   z-index: 1000;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-  transition: transform 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .challenge-toggle-btn:hover {
-  transform: scale(1.1);
+  transform: translateY(-2px);
+}
+
+.challenge-toggle-inline {
+  font-size: 22px;
+  color: var(--ui-ink);
 }
 
 /* ... (Các phần dưới giữ nguyên) ... */

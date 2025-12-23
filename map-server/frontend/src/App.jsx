@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import './App.css';
 
 /* ================= COMPONENTS ================= */
 import GlobalCanvasGrid from './components/GlobalCanvasGrid.jsx';
@@ -15,10 +16,10 @@ import TeamModal from './components/TeamModal.jsx';
 import PixelInfoModal from './components/PixelInfoModal.jsx';
 import ShareModal from './components/ShareModal.jsx';
 import ZoomToPaintButton from './components/ZoomToPaintButton.jsx';
-import TeamBadge from './components/TeamBadge.jsx';
 import ZoomWarningToast from './components/ZoomWarningToast.jsx';
 import FavoriteMarkers from './components/FavoriteMarkers.jsx';
 import LocationButton from './components/LocationButton.jsx';
+import MapControlWrapper from './components/MapControlWrapper.jsx';
 
 /* Admin / Advanced */
 import OverlayLayer from './components/OverlayLayer.jsx';
@@ -133,27 +134,99 @@ const MapZoomController = ({ setCanPaint }) => {
 };
 
 /* ================= UI ================= */
+const IconGrid = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm11 0h7v7h-7v-7z" />
+  </svg>
+);
+
+const IconCart = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm10 0a2 2 0 1 0 .001 3.999A2 2 0 0 0 17 18zM6.2 6h13.6l-1.4 7.2a2 2 0 0 1-2 1.6H8.1a2 2 0 0 1-2-1.6L4.4 2H2V0h3.6l.6 3z" />
+  </svg>
+);
+
+const IconUsers = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M8.5 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm7 2a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7zM2 22v-1.5A6.5 6.5 0 0 1 8.5 14h0A6.5 6.5 0 0 1 15 20.5V22H2zm13 0v-1.2a6.9 6.9 0 0 0-2.3-5 6.4 6.4 0 0 1 8.3 6.2V22h-6z" />
+  </svg>
+);
+
+const IconChart = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M3 3h2v18H3V3zm6 8h2v10H9V11zm6-5h2v15h-2V6zm6 9h2v6h-2v-6z" />
+  </svg>
+);
+
+const IconHeat = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 2s4 3.5 4 7.5A4 4 0 1 1 8 9.5C8 5.5 12 2 12 2zm0 8.5c-1.1 1-2 2.4-2 3.8a2 2 0 1 0 4 0c0-1.4-.9-2.8-2-3.8z" />
+  </svg>
+);
+
+const IconLogin = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18zm1 5h-2v4H7v2h4v4h2v-4h4v-2h-4V8z" />
+  </svg>
+);
+
+const RailButton = ({ onClick, title, badge, active, children }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`control-button${active ? ' is-active' : ''}`}
+    title={title}
+  >
+    {children}
+    {badge ? <span className="control-badge">{badge}</span> : null}
+  </button>
+);
 const AuthControls = () => {
   const { isLoggedIn, user, openAuthModal } = useAuth();
   return (
-      <div className="absolute top-4 right-4 z-[1200] auth-controls-ignore">
-        {isLoggedIn && user ? <Profile /> : (
-            <button onClick={openAuthModal} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Đăng nhập</button>
-        )}
-      </div>
+    <div className="rail-section">
+      {isLoggedIn && user ? (
+        <Profile compact />
+      ) : (
+        <RailButton onClick={openAuthModal} title="Dang nhap">
+          <IconLogin />
+        </RailButton>
+      )}
+    </div>
   );
 };
 
-const AuxiliaryButtons = ({ openLeaderboard, openTeamModal, currentTeam, openStore, isHeatmapOn, setIsHeatmapOn }) => (
-    <div className="absolute top-16 right-4 z-[1000] flex flex-col gap-3 items-end aux-buttons-ignore">
-      <button onClick={() => setIsHeatmapOn(!isHeatmapOn)} className={`px-4 py-2 rounded-lg font-bold ${isHeatmapOn ? 'bg-red-500 text-white' : 'bg-white text-gray-700'}`}>
-        {isHeatmapOn ? '🔥 Tắt nhiệt' : '🌡️ Bản đồ nhiệt'}
-      </button>
-      {currentTeam ? <TeamBadge currentTeam={currentTeam} onClick={openTeamModal} /> : <button onClick={openTeamModal} className="px-4 py-2 bg-purple-500 text-white rounded-lg">Team</button>}
-      <button onClick={openLeaderboard} className="px-4 py-2 bg-yellow-500 text-white rounded-lg">Leaderboard</button>
-      <button onClick={openStore} className="px-4 py-2 bg-indigo-600 text-white rounded-lg">💧 Store</button>
-    </div>
+const AuxiliaryButtons = ({
+  openLeaderboard,
+  openTeamModal,
+  openStore,
+  isHeatmapOn,
+  setIsHeatmapOn,
+  pendingCount
+}) => (
+  <div className="rail-section">
+    <RailButton
+      onClick={() => setIsHeatmapOn(!isHeatmapOn)}
+      title={isHeatmapOn ? 'Tat nhiet' : 'Bat nhiet'}
+      active={isHeatmapOn}
+    >
+      <IconHeat />
+    </RailButton>
+    <RailButton onClick={openTeamModal} title="Team">
+      <IconUsers />
+    </RailButton>
+    <RailButton onClick={openLeaderboard} title="Leaderboard">
+      <IconChart />
+    </RailButton>
+    <RailButton onClick={openStore} title="Store" badge={pendingCount > 0 ? pendingCount : null}>
+      <IconCart />
+    </RailButton>
+    <RailButton onClick={openStore} title="Market">
+      <IconGrid />
+    </RailButton>
+  </div>
 );
+
 
 /* ================= MAIN APP ================= */
 const App = () => {
@@ -217,7 +290,7 @@ const App = () => {
   };
 
   return (
-      <div style={{ height: '100vh', width: '100vw', position: 'relative' }}>
+      <div className="app-shell">
         {isAuthModalOpen && <AuthModal onClose={closeAuthModal} />}
         {isVerificationRequired && <VerificationModal />}
         {isAppealModalOpen && <AppealModal onClose={() => setIsAppealModalOpen(false)} />}
@@ -245,7 +318,6 @@ const App = () => {
             
             <MapUrlHandler />
             <MapInitializer />
-            <LocationButton />
             <MapZoomController setCanPaint={setCanPaint} />
 
             <OverlayLayer />
@@ -265,24 +337,29 @@ const App = () => {
                 pixelInfo={pixelInfo}
             />
             <FavoriteMarkers favorites={favorites} />
+        <MapControlWrapper className="right-rail" style={{ zIndex: 1200 }}>
+          <AuthControls />
+          <AuxiliaryButtons
+            openLeaderboard={() => setIsLeaderboardOpen(true)}
+            openTeamModal={() => setIsTeamModalOpen(true)}
+            openStore={() => setIsStoreOpen(true)}
+            isHeatmapOn={isHeatmapOn}
+            setIsHeatmapOn={setIsHeatmapOn}
+            pendingCount={pendingPixels.length}
+          />
+          <ChallengePanel inline />
+          <SoundSettings isOpen={isSoundOpen} onToggle={() => setIsSoundOpen(!isSoundOpen)} inline />
+          <OverlayMenu isOpen={isOverlayOpen} onToggle={() => setIsOverlayOpen(!isOverlayOpen)} inline />
+          <LocationButton inline />
+        </MapControlWrapper>
+
           </MapContainer>
         </div>
 
         <ChatBox />
-        <AuthControls />
         <AdminManager onStartWipe={() => setIsWipeMode(true)} />
 
-        <AuxiliaryButtons
-            openLeaderboard={() => setIsLeaderboardOpen(true)}
-            openTeamModal={() => setIsTeamModalOpen(true)}
-            currentTeam={currentTeam}
-            openStore={() => setIsStoreOpen(true)}
-            isHeatmapOn={isHeatmapOn}
-            setIsHeatmapOn={setIsHeatmapOn}
-        />
 
-        <SoundSettings isOpen={isSoundOpen} onToggle={() => setIsSoundOpen(!isSoundOpen)} />
-        <OverlayMenu isOpen={isOverlayOpen} onToggle={() => setIsOverlayOpen(!isOverlayOpen)} />
 
         {/* --- CẬP NHẬT LEADERBOARD & TEAM MODAL --- */}
         {isLeaderboardOpen && (
@@ -302,7 +379,6 @@ const App = () => {
             />
         )}
 
-        <ChallengePanel />
         <Store isOpen={isStoreOpen} onClose={() => setIsStoreOpen(false)} />
 
         {!isPixelInfoModalOpen && (

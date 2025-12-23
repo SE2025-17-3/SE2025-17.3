@@ -1,43 +1,153 @@
 /* map-server/frontend/src/App.css */
+:root {
+  --ui-ink: #263248;
+  --ui-shadow: 0 12px 28px rgba(15, 23, 42, 0.22);
+  --ui-soft-shadow: 0 6px 18px rgba(15, 23, 42, 0.18);
+  --ui-border: rgba(9, 18, 36, 0.08);
+  --ui-glow: rgba(255, 255, 255, 0.8);
+  --ui-accent: #ffb347;
+}
+
+body,
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  height: 100%;
+  margin: 0;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.app-shell {
+  height: 100vh;
+  width: 100vw;
+  position: relative;
+  font-family: "Trebuchet MS", "Lucida Sans", "Lucida Grande", sans-serif;
+  color: var(--ui-ink);
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
+.right-rail {
+  position: absolute;
+  right: 18px;
+  top: 28px;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  align-items: center;
+}
+
+.rail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.rail-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  position: relative;
+}
+
+.rail-popover {
+  position: absolute;
+  right: 72px;
+  top: -60px;
+  z-index: 1300;
+}
+
+.control-button {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid var(--ui-border);
+  background: linear-gradient(180deg, #ffffff 0%, #e7edf5 100%);
+  box-shadow: var(--ui-shadow), inset 0 1px 0 var(--ui-glow);
+  color: var(--ui-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+  cursor: pointer;
+  padding: 0;
+}
+
+.control-button svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.control-button:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ui-shadow), inset 0 1px 0 var(--ui-glow);
+}
+
+.control-button:active {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: var(--ui-soft-shadow);
+}
+
+.control-button.is-active {
+  background: linear-gradient(180deg, #ffe7b8 0%, #ffc870 100%);
+  color: #7a4b00;
+}
+
+.control-badge {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #5a49ff;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 12px rgba(90, 73, 255, 0.35);
+}
+
+.map-location-control {
+  position: absolute;
+  right: 18px;
+  bottom: 42px;
+  z-index: 1200;
+}
+
+.location-button {
+  color: #1b5cff;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(27, 92, 255, 0.25);
+  border-top-color: #1b5cff;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
   to {
     transform: rotate(360deg);
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+@media (max-width: 768px) {
+  .right-rail {
+    top: 5px;
+    right: 12px;
+    gap: 14px;
   }
-}
 
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
+  .control-button,
+  .profile-container.compact .profile-header {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+  }
 }

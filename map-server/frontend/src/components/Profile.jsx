@@ -4,7 +4,7 @@ import './Profile.css';
 import EditProfileModal from './EditProfileModal';
 import { useAuth } from '../context/AuthContext';
 
-const Profile = () => {
+const Profile = ({ compact = false }) => {
     const { user, logout } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -36,7 +36,7 @@ const Profile = () => {
     };
 
     return (
-        <div className="profile-container">
+        <div className={`profile-container${compact ? ' compact' : ''}`}>
             <div className="profile-header" onClick={toggleMenu}>
                 <img
                     src={getAvatarUrl()}
@@ -48,7 +48,7 @@ const Profile = () => {
                         e.target.src = '/default-avatar.png';
                     }}
                 />
-                <span className="username">Chào, {user.displayName}</span>
+                {!compact && <span className="username">Chào, {user.displayName}</span>}
             </div>
             {isMenuOpen && (
                 <div className="profile-menu">
