@@ -1,68 +1,68 @@
-# PixelMap - Collaborative Pixel Canvas Platform
+# PixelMap - Nền Tảng Vẽ Pixel Cộng Tác
 
-A real-time collaborative pixel art platform inspired by Reddit's r/place, allowing users to place colored pixels on a massive shared canvas, coordinate with teams, complete daily challenges, and compete on global leaderboards.
-
----
-
-## 🎯 Goals & Objectives
-
-### Primary Business Goal
-**To provide a collaborative pixel art experience where communities can create, compete, and express themselves collectively on a shared global canvas.** This platform gamifies the creative process through team dynamics, daily challenges, and competitive leaderboards.
-
-### Technical Objectives
-- **Real-time collaboration**: Sub-second pixel updates across all connected clients via WebSockets
-- **Massive scale canvas**: Support for 25,000 x 52,000+ pixel grid (world-map projection)
-- **High availability**: Redis caching with chunk-based data loading for performance
-- **Gamification engine**: Challenge system with streaks, badges, and reward mechanics
-- **Monetization ready**: Stripe integration for in-app purchases (droplets currency, energy boosts)
-- **Event-driven notifications**: Redis Streams with hybrid push/pull delivery for user engagement
-
-### Target Audience
-- **Pixel art communities** seeking collaborative creation spaces
-- **Gaming communities** wanting territory-based team competition
-- **Event organizers** looking for interactive audience participation
-- **Content creators** building community engagement through collective art
+Một nền tảng nghệ thuật pixel cộng tác theo thời gian thực lấy cảm hứng từ r/place của Reddit, cho phép người dùng đặt các pixel màu trên một canvas chia sẻ khổng lồ, phối hợp với các đội nhóm, hoàn thành thử thách hàng ngày và cạnh tranh trên bảng xếp hạng toàn cầu.
 
 ---
 
-## 🏗 Architecture & Stack
+## 🎯 Mục Tiêu
+
+### Mục Tiêu Kinh Doanh Chính
+**Cung cấp trải nghiệm nghệ thuật pixel cộng tác nơi cộng đồng có thể sáng tạo, cạnh tranh và thể hiện bản thân một cách tập thể trên một canvas toàn cầu được chia sẻ.** Nền tảng này game hóa quá trình sáng tạo thông qua động lực đội nhóm, thử thách hàng ngày và bảng xếp hạng cạnh tranh.
+
+### Mục Tiêu Kỹ Thuật
+- **Cộng tác theo thời gian thực**: Cập nhật pixel dưới một giây trên tất cả các client được kết nối qua WebSockets
+- **Canvas quy mô lớn**: Hỗ trợ lưới pixel 25,000 x 52,000+ (phép chiếu bản đồ thế giới)
+- **Tính khả dụng cao**: Bộ nhớ đệm Redis với tải dữ liệu dựa trên chunk để tối ưu hiệu suất
+- **Công cụ game hóa**: Hệ thống thử thách với chuỗi ngày, huy hiệu và cơ chế phần thưởng
+- **Sẵn sàng kiếm tiền**: Tích hợp Stripe cho mua hàng trong ứng dụng (tiền tệ droplets, tăng năng lượng)
+- **Thông báo hướng sự kiện**: Redis Streams với phân phối đẩy/kéo kết hợp để tương tác người dùng
+
+### Đối Tượng Mục Tiêu
+- **Cộng đồng nghệ thuật pixel** tìm kiếm không gian sáng tạo cộng tác
+- **Cộng đồng game** muốn cạnh tranh đội nhóm dựa trên lãnh thổ
+- **Nhà tổ chức sự kiện** tìm kiếm sự tham gia tương tác của khán giả
+- **Nhà sáng tạo nội dung** xây dựng sự tương tác cộng đồng thông qua nghệ thuật tập thể
+
+---
+
+## 🏗 Kiến Trúc & Công Nghệ
 
 ### Frontend
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **React** | 19.x | UI framework with hooks |
-| **Vite** | 7.x | Build tool and dev server |
-| **Leaflet / React-Leaflet** | 1.9.x / 5.x | Interactive map-based canvas |
-| **Socket.IO Client** | 4.8.x | Real-time bidirectional communication |
-| **Stripe React** | 5.4.x | Payment flow integration |
+| Công Nghệ | Phiên Bản | Mục Đích |
+|-----------|-----------|----------|
+| **React** | 19.x | Framework UI với hooks |
+| **Vite** | 7.x | Công cụ build và dev server |
+| **Leaflet / React-Leaflet** | 1.9.x / 5.x | Canvas tương tác dựa trên bản đồ |
+| **Socket.IO Client** | 4.8.x | Giao tiếp hai chiều theo thời gian thực |
+| **Stripe React** | 5.4.x | Tích hợp luồng thanh toán |
 | **Axios** | 1.13.x | HTTP client |
 
 ### Backend
-| Technology | Version | Purpose |
-|------------|---------|---------|
+| Công Nghệ | Phiên Bản | Mục Đích |
+|-----------|-----------|----------|
 | **Express** | 5.x | Web framework |
-| **Socket.IO** | 4.8.x | Real-time event broadcasting |
+| **Socket.IO** | 4.8.x | Phát sóng sự kiện theo thời gian thực |
 | **Mongoose** | 8.x | MongoDB ODM |
 | **Prisma** | 6.x | Database ORM (MongoDB provider) |
-| **ioredis** | 5.8.x | Redis client for caching |
-| **Stripe** | 20.x | Payment processing |
-| **bcryptjs** | 3.x | Password hashing |
-| **jsonwebtoken** | 9.x | JWT authentication |
-| **Nodemailer** | 7.x | Email services |
+| **ioredis** | 5.8.x | Redis client cho caching |
+| **Stripe** | 20.x | Xử lý thanh toán |
+| **bcryptjs** | 3.x | Mã hóa mật khẩu |
+| **jsonwebtoken** | 9.x | Xác thực JWT |
+| **Nodemailer** | 7.x | Dịch vụ email |
 
 ### Database/Storage
-| System | Purpose |
-|--------|---------|
-| **MongoDB** | Primary data store (users, pixels, teams, challenges, notifications) |
-| **Redis** | Caching layer for chunk data + Streams for event processing |
+| Hệ Thống | Mục Đích |
+|----------|----------|
+| **MongoDB** | Lưu trữ dữ liệu chính (users, pixels, teams, challenges, notifications) |
+| **Redis** | Lớp caching cho chunk data + Streams cho xử lý sự kiện |
 
 ### Redis Streams
-| Stream | Consumer Group | Purpose |
-|--------|----------------|---------|
-| `pixels:events` | `pixel-processors` | Pixel event processing |
-| `notifications:events` | `notification-processors` | Notification delivery (push/pull) |
+| Stream | Consumer Group | Mục Đích |
+|--------|----------------|----------|
+| `pixels:events` | `pixel-processors` | Xử lý sự kiện pixel |
+| `notifications:events` | `notification-processors` | Phân phối thông báo (push/pull) |
 
-### Key Design Patterns
+### Các Mẫu Thiết Kế Chính
 
 ```mermaid
 graph TD
@@ -93,34 +93,34 @@ graph TD
         T[(Redis Streams)]
     end
 
-    C <-->|WebSocket| N
-    J <-->|WebSocket| N
+    C <--> |WebSocket| N
+    J <--> |WebSocket| N
     O --> S
     O --> T
     R --> T
     R --> S
 ```
 
-- **MVC Pattern**: Controllers handle requests, Models define data structures, Services contain business logic
-- **Context Pattern**: React contexts for global state (Auth, Socket, Challenge, Wallet, Notification)
-- **Repository Pattern**: Mongoose models with static methods for data access
-- **Observer Pattern**: Socket.IO for real-time event broadcasting
-- **Outbox Pattern**: Event sourcing for pixel events and notifications (ensures consistency)
-- **Chunk-based Loading**: Canvas data loaded in 256x256 pixel chunks for performance
-- **Redis Streams**: Decoupled event processing for notifications with consumer groups
+- **Mẫu MVC**: Controllers xử lý requests, Models định nghĩa cấu trúc dữ liệu, Services chứa logic nghiệp vụ
+- **Mẫu Context**: React contexts cho trạng thái toàn cục (Auth, Socket, Challenge, Wallet, Notification)
+- **Mẫu Repository**: Mongoose models với static methods cho truy cập dữ liệu
+- **Mẫu Observer**: Socket.IO cho phát sóng sự kiện theo thời gian thực
+- **Mẫu Outbox**: Event sourcing cho pixel events và notifications (đảm bảo tính nhất quán)
+- **Tải Dựa Trên Chunk**: Dữ liệu canvas được tải theo chunk 256x256 pixel để tối ưu hiệu suất
+- **Redis Streams**: Xử lý sự kiện tách rời cho notifications với consumer groups
 
-### Notification System Architecture
+### Kiến Trúc Hệ Thống Thông Báo
 
 ```mermaid
 flowchart TB
-    subgraph triggers [Event Triggers]
+    subgraph triggers [Trình Kích Hoạt Sự Kiện]
         TeamCtrl[Team Controller]
         ChallengeCtrl[Challenge Service]
         WalletCtrl[Wallet Service]
         PaymentCtrl[Payment Service]
     end
 
-    subgraph outbox [Outbox Pattern]
+    subgraph outbox [Mẫu Outbox]
         NotifOutbox[(Notification Outbox)]
     end
 
@@ -132,13 +132,13 @@ flowchart TB
         NotifConsumer[NotificationConsumer Worker]
     end
 
-    subgraph delivery [Delivery]
+    subgraph delivery [Phân Phối]
         MongoDB[(Notification Collection)]
         SocketIO[Socket.IO Push]
     end
 
     subgraph client [Client]
-        Browser[User Browser]
+        Browser[Trình Duyệt Người Dùng]
     end
 
     TeamCtrl --> NotifOutbox
@@ -149,101 +149,101 @@ flowchart TB
     NotifOutbox --> NotifStream
     NotifStream --> NotifConsumer
     NotifConsumer --> MongoDB
-    NotifConsumer -->|Push types only| SocketIO
+    NotifConsumer --> |Chỉ loại Push| SocketIO
     SocketIO --> Browser
-    Browser -->|Pull types| MongoDB
+    Browser --> |Loại Pull| MongoDB
 ```
 
 ---
 
-## 🚀 Key Features
+## 🚀 Tính Năng Chính
 
-### 1. 🎨 Real-time Pixel Canvas
-- Place colored pixels on a massive global canvas (25,000+ height resolution)
-- Leaflet-based map with smooth panning/zooming
-- Chunk-based loading for performance at scale
-- Pixel attribution showing owner, team, and timestamp
+### 1. 🎨 Canvas Pixel Thời Gian Thực
+- Đặt các pixel màu trên canvas toàn cầu khổng lồ (độ phân giải chiều cao 25,000+)
+- Bản đồ dựa trên Leaflet với panning/zooming mượt mà
+- Tải dựa trên chunk để tối ưu hiệu suất ở quy mô lớn
+- Thuộc tính pixel hiển thị chủ sở hữu, đội và dấu thời gian
 
-### 2. 👥 Team Collaboration
-- Create/join teams for coordinated pixel placement
-- **Team overlays**: Upload template images to guide collaborative artwork
-- Team-based leaderboards tracking collective pixel contribution
-- Real-time team chat and ping system
+### 2. 👥 Cộng Tác Đội Nhóm
+- Tạo/tham gia đội để đặt pixel có phối hợp
+- **Lớp phủ đội**: Tải lên hình ảnh mẫu để hướng dẫn tác phẩm nghệ thuật cộng tác
+- Bảng xếp hạng dựa trên đội theo dõi đóng góp pixel tập thể
+- Chat đội và hệ thống ping theo thời gian thực
 
-### 3. 🏆 Daily Challenges & Streaks
-- Rotating daily challenges (place X pixels, use specific colors, etc.)
-- Streak system rewarding consecutive daily participation
-- Challenge points convertible to in-game currency (droplets)
-- Badge system for achievements
+### 3. 🏆 Thử Thách Hàng Ngày & Chuỗi Ngày
+- Thử thách hàng ngày luân phiên (đặt X pixel, sử dụng màu cụ thể, v.v.)
+- Hệ thống chuỗi ngày thưởng cho sự tham gia hàng ngày liên tiếp
+- Điểm thử thách có thể chuyển đổi thành tiền tệ trong game (droplets)
+- Hệ thống huy hiệu cho thành tích
 
-### 4. 💰 Economy & Store
-- **Energy system**: Regenerating resource required to place pixels
-- **Droplets**: In-game currency earned through challenges
-- **Stripe payments**: Purchase energy boosts and capacity upgrades
-- Store items: Max capacity upgrades, energy recharge packs
+### 4. 💰 Kinh Tế & Cửa Hàng
+- **Hệ thống năng lượng**: Tài nguyên tái tạo cần thiết để đặt pixel
+- **Droplets**: Tiền tệ trong game kiếm được thông qua thử thách
+- **Thanh toán Stripe**: Mua tăng năng lượng và nâng cấp dung lượng
+- Vật phẩm cửa hàng: Nâng cấp dung lượng tối đa, gói nạp năng lượng
 
-### 5. 📊 Leaderboards & Stats
-- Global user rankings by pixel count
-- Team leaderboards with member breakdowns
-- Time-filtered views (daily, weekly, all-time)
-- Heatmap visualization of activity
+### 5. 📊 Bảng Xếp Hạng & Thống Kê
+- Xếp hạng người dùng toàn cầu theo số lượng pixel
+- Bảng xếp hạng đội với phân tích thành viên
+- Chế độ xem được lọc theo thời gian (hàng ngày, hàng tuần, mọi thời điểm)
+- Trực quan hóa bản đồ nhiệt của hoạt động
 
-### 6. 🔔 Notification System
-- **Real-time push notifications** via Socket.IO for immediate feedback
-- **Pull-based notifications** fetched on demand for batch-friendly updates
-- Bell icon with unread count badge
-- Toast pop-ups for critical notifications (droplets earned, payments)
-- Notification history with mark-as-read functionality
+### 6. 🔔 Hệ Thống Thông Báo
+- **Thông báo đẩy theo thời gian thực** qua Socket.IO cho phản hồi tức thì
+- **Thông báo dựa trên kéo** được lấy theo yêu cầu cho cập nhật thân thiện với batch
+- Biểu tượng chuông với huy hiệu số lượng chưa đọc
+- Toast pop-ups cho thông báo quan trọng (droplets kiếm được, thanh toán)
+- Lịch sử thông báo với chức năng đánh dấu đã đọc
 
-| Notification Type | Delivery | Trigger |
-|-------------------|----------|---------|
-| `droplets_earned` | **Push** (Toast) | Completing challenges, rewards |
-| `droplets_spent` | **Push** (Toast) | Store purchases |
-| `payment_success` | **Push** (Toast) | Stripe payment confirmed |
-| `team_member_joined` | **Pull** (Bell) | New team member joins |
-| `team_member_left` | **Pull** (Bell) | Team member leaves |
-| `challenge_completed` | **Pull** (Bell) | Daily challenge finished |
-| `badge_earned` | **Pull** (Bell) | Achievement unlocked |
+| Loại Thông Báo | Phân Phối | Trình Kích Hoạt |
+|----------------|-----------|-----------------|
+| `droplets_earned` | **Push** (Toast) | Hoàn thành thử thách, phần thưởng |
+| `droplets_spent` | **Push** (Toast) | Mua hàng tại cửa hàng |
+| `payment_success` | **Push** (Toast) | Thanh toán Stripe được xác nhận |
+| `team_member_joined` | **Pull** (Bell) | Thành viên mới tham gia đội |
+| `team_member_left` | **Pull** (Bell) | Thành viên rời đội |
+| `challenge_completed` | **Pull** (Bell) | Thử thách hàng ngày hoàn thành |
+| `badge_earned` | **Pull** (Bell) | Mở khóa thành tích |
 
-### 7. 🔐 Authentication & Admin
-- Email/password + Google OAuth authentication
-- Email verification and password reset flows
-- Admin dashboard for user/ban management
-- Appeal system for banned users
+### 7. 🔐 Xác Thực & Quản Trị
+- Xác thực Email/mật khẩu + Google OAuth
+- Luồng xác minh email và đặt lại mật khẩu
+- Bảng điều khiển quản trị cho quản lý người dùng/cấm
+- Hệ thống kháng nghị cho người dùng bị cấm
 
 ---
 
-## 🛠 Setup & Installation
+## 🛠 Cài Đặt & Thiết Lập
 
-### Prerequisites
+### Yêu Cầu Tiên Quyết
 - Node.js 18+
-- MongoDB instance (local or Atlas)
-- Redis instance (local or cloud)
-- Stripe account (for payments)
+- MongoDB instance (local hoặc Atlas)
+- Redis instance (local hoặc cloud)
+- Tài khoản Stripe (cho thanh toán)
 
-### Quick Start (Development)
+### Khởi Động Nhanh (Development)
 
 ```bash
-# Clone the repository
+# Clone repository
 git clone <repo-url>
 cd map-server
 
-# --- Backend Setup ---
+# --- Thiết Lập Backend ---
 cd backend
 cp .env.local .env
-# Edit .env with your MongoDB URI, Redis config, and Stripe keys
+# Chỉnh sửa .env với MongoDB URI, cấu hình Redis và khóa Stripe của bạn
 npm install
 npm run prisma:generate
 npm run dev
 
-# --- Frontend Setup (new terminal) ---
+# --- Thiết Lập Frontend (terminal mới) ---
 cd frontend
-cp .env.example .env  # Configure VITE_API_URL if needed
+cp .env.example .env  # Cấu hình VITE_API_URL nếu cần
 npm install
 npm run dev
 ```
 
-### Environment Variables (Backend `.env`)
+### Biến Môi Trường (Backend `.env`)
 
 ```env
 # Database
@@ -273,30 +273,30 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 RECAPTCHA_V2_SECRET_KEY=your-recaptcha-key
 ```
 
-### Available Scripts
+### Các Lệnh Có Sẵn
 
 #### Backend (`/map-server/backend`)
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start dev server with hot reload |
-| `npm start` | Start production server |
-| `npm run prisma:generate` | Generate Prisma client |
-| `npm run prisma:push` | Push schema to database |
-| `npm run prisma:studio` | Open Prisma Studio GUI |
-| `npm run migrate:up` | Run MongoDB migrations |
+| Lệnh | Mô Tả |
+|------|-------|
+| `npm run dev` | Khởi động dev server với hot reload |
+| `npm start` | Khởi động production server |
+| `npm run prisma:generate` | Tạo Prisma client |
+| `npm run prisma:push` | Đẩy schema lên database |
+| `npm run prisma:studio` | Mở Prisma Studio GUI |
+| `npm run migrate:up` | Chạy MongoDB migrations |
 
 #### Frontend (`/map-server/frontend`)
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start Vite dev server |
-| `npm run build` | Build for production |
-| `npm run preview` | Preview production build |
-| `npm run lint` | Run ESLint |
+| Lệnh | Mô Tả |
+|------|-------|
+| `npm run dev` | Khởi động Vite dev server |
+| `npm run build` | Build cho production |
+| `npm run preview` | Xem trước production build |
+| `npm run lint` | Chạy ESLint |
 
-### Docker Deployment
+### Triển Khai Docker
 
 ```bash
-# Development with Docker Compose
+# Development với Docker Compose
 docker-compose up -d
 
 # Production
@@ -305,100 +305,100 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ---
 
-## 📁 Project Structure
+## 📁 Cấu Trúc Dự Án
 
 ```
 map-server/
 ├── backend/
 │   ├── src/
-│   │   ├── config/          # Redis, database configs
-│   │   │   └── redis.js     # Redis client + Stream constants
+│   │   ├── config/          # Cấu hình Redis, database
+│   │   │   └── redis.js     # Redis client + hằng số Stream
 │   │   ├── controllers/
 │   │   │   ├── authController.js
 │   │   │   ├── pixelController.js
 │   │   │   ├── teamController.js
-│   │   │   └── notificationController.js  # Notification CRUD
+│   │   │   └── notificationController.js  # CRUD thông báo
 │   │   ├── middleware/      # Auth, validation
 │   │   ├── models/
 │   │   │   ├── User.js
 │   │   │   ├── Pixel.js
 │   │   │   ├── Team.js
-│   │   │   ├── Notification.js   # Notification schema
+│   │   │   ├── Notification.js   # Schema thông báo
 │   │   │   └── Outbox.js         # Event outbox
 │   │   ├── routes/
 │   │   │   └── notificationRoutes.js  # /api/notifications
 │   │   ├── services/
-│   │   │   ├── challengeService.js    # Triggers notifications
-│   │   │   ├── walletService.js       # Triggers notifications
-│   │   │   ├── paymentService.js      # Triggers notifications
-│   │   │   └── notificationService.js # Notification business logic
-│   │   ├── socket/          # Socket.IO handlers
-│   │   ├── utils/           # Helper functions
+│   │   │   ├── challengeService.js    # Kích hoạt thông báo
+│   │   │   ├── walletService.js       # Kích hoạt thông báo
+│   │   │   ├── paymentService.js      # Kích hoạt thông báo
+│   │   │   └── notificationService.js # Logic nghiệp vụ thông báo
+│   │   ├── socket/          # Xử lý Socket.IO
+│   │   ├── utils/           # Hàm helper
 │   │   └── workers/
 │   │       ├── outboxPublisher.js     # Outbox → Redis Stream
 │   │       ├── streamConsumer.js      # Pixel event consumer
 │   │       └── notificationConsumer.js # Notification consumer
 │   ├── prisma/              # Prisma schema
 │   ├── migrations/          # MongoDB migrations
-│   └── server.js            # Entry point + worker startup
+│   └── server.js            # Entry point + khởi động worker
 │
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── NotificationBell.jsx   # Bell icon + dropdown
+│   │   │   ├── NotificationBell.jsx   # Biểu tượng chuông + dropdown
 │   │   │   ├── NotificationToast.jsx  # Toast pop-ups
-│   │   │   └── Notification.css       # Notification styles
+│   │   │   └── Notification.css       # Styles thông báo
 │   │   ├── context/
 │   │   │   ├── AuthContext.jsx
 │   │   │   ├── SocketContext.jsx
 │   │   │   ├── ChallengeContext.jsx
-│   │   │   └── NotificationContext.jsx # Notification state
+│   │   │   └── NotificationContext.jsx # Trạng thái thông báo
 │   │   ├── services/
-│   │   │   └── notificationApi.js     # Notification API calls
-│   │   ├── config/          # Constants, configuration
-│   │   ├── App.jsx          # Main application
+│   │   │   └── notificationApi.js     # API calls thông báo
+│   │   ├── config/          # Hằng số, cấu hình
+│   │   ├── App.jsx          # Ứng dụng chính
 │   │   └── main.jsx         # Entry point + providers
 │   └── index.html
 │
-└── docker-compose.yml       # Docker orchestration
+└── docker-compose.yml       # Điều phối Docker
 ```
 
 ---
 
-## 🔌 API Overview
+## 🔌 Tổng Quan API
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/auth/*` | Various | Authentication (login, register, OAuth) |
-| `/api/pixels/*` | GET/POST | Pixel data and placement |
-| `/api/teams/*` | Various | Team CRUD and management |
-| `/api/challenges/*` | GET/POST | Daily challenges and rewards |
-| `/api/wallet/*` | GET/POST | Droplets balance and transactions |
-| `/api/store/*` | GET/POST | Store items and purchases |
-| `/api/payment/*` | POST | Stripe payment intents |
-| `/api/leaderboard/*` | GET | Rankings and stats |
-| `/api/notifications/*` | Various | User notifications |
-| `/api/admin/*` | Various | Admin operations (protected) |
+| Endpoint | Method | Mô Tả |
+|----------|--------|-------|
+| `/api/auth/*` | Nhiều | Xác thực (login, register, OAuth) |
+| `/api/pixels/*` | GET/POST | Dữ liệu pixel và đặt pixel |
+| `/api/teams/*` | Nhiều | CRUD và quản lý đội |
+| `/api/challenges/*` | GET/POST | Thử thách hàng ngày và phần thưởng |
+| `/api/wallet/*` | GET/POST | Số dư droplets và giao dịch |
+| `/api/store/*` | GET/POST | Vật phẩm cửa hàng và mua hàng |
+| `/api/payment/*` | POST | Payment intents Stripe |
+| `/api/leaderboard/*` | GET | Xếp hạng và thống kê |
+| `/api/notifications/*` | Nhiều | Thông báo người dùng |
+| `/api/admin/*` | Nhiều | Thao tác quản trị (được bảo vệ) |
 
-### Notification API Endpoints
+### Các Endpoint API Thông Báo
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/notifications` | GET | List user's notifications (paginated) |
-| `/api/notifications/unread-count` | GET | Get unread notification count |
-| `/api/notifications/:id/read` | PATCH | Mark single notification as read |
-| `/api/notifications/read-all` | PATCH | Mark all notifications as read |
-
----
-
-## 🌐 Live Deployment
-
-- **Production URL**: `https://se2025-17-3.codes`
-- **Infrastructure**: Docker containers with nginx reverse proxy
-- **SSL**: Let's Encrypt certificates
+| Endpoint | Method | Mô Tả |
+|----------|--------|-------|
+| `/api/notifications` | GET | Liệt kê thông báo của người dùng (phân trang) |
+| `/api/notifications/unread-count` | GET | Lấy số lượng thông báo chưa đọc |
+| `/api/notifications/:id/read` | PATCH | Đánh dấu thông báo đơn lẻ đã đọc |
+| `/api/notifications/read-all` | PATCH | Đánh dấu tất cả thông báo đã đọc |
 
 ---
 
-## 📝 License
+## 🌐 Triển Khai Trực Tiếp
+
+- **URL Production**: `https://se2025-17-3.codes`
+- **Cơ sở hạ tầng**: Docker containers với nginx reverse proxy
+- **SSL**: Chứng chỉ Let's Encrypt
+
+---
+
+## 📝 Giấy Phép
 
 ISC License

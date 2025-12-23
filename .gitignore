@@ -77,7 +77,7 @@ junit.xml
 reports/
 
 # Markdown files (documentation)
-*.md
+#*.md
 !README.md
 *.sh
 # SSH Keys
