@@ -36,6 +36,11 @@ const ChatBox = () => {
 
   // 1. Logic nhận tin nhắn & Load history
   useEffect(() => {
+    if (!socket || !isLoggedIn || !currentTeam) return;
+    socket.emit('chat:subscribe', { teamId: currentTeam._id });
+  }, [socket, isLoggedIn, currentTeam]);
+
+  useEffect(() => {
     if (!socket || !isLoggedIn) return;
 
     setMessages([]);
@@ -60,7 +65,7 @@ const ChatBox = () => {
         setMessages((prev) => [...prev, msg]);
         setTimeout(scrollToBottom, 50);
       }
-      if (isTeam && activeTab !== 'team') {
+      if (isTeam && (activeTab !== 'team' || !isOpen)) {
         setTeamUnread((prev) => prev + 1);
       }
     };
@@ -101,6 +106,12 @@ const ChatBox = () => {
       setTeamUnread(0);
     }
   }, [activeTab, isOpen]);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setIsOpen(false);
+    }
+  }, [isLoggedIn]);
 
   // 2. Gửi tin nhắn
   const handleSend = (e) => {

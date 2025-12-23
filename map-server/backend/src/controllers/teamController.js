@@ -360,6 +360,7 @@ export const joinTeam = async (req, res) => {
 export const leaveTeam = async (req, res) => {
   try {
     const userId = req.session.userId;
+    const { newLeaderId } = req.body || {};
     const user = await User.findById(userId);
 
     if (!user || !user.teamId) {
@@ -378,9 +379,35 @@ export const leaveTeam = async (req, res) => {
     const teamIdForNotif = team._id;
 
     if (isCreator) {
-      await User.updateMany({ teamId: team._id }, { $set: { teamId: null } });
-      await Team.deleteOne({ _id: team._id });
-      return res.json({ message: 'You left and deleted the team (as creator)' });
+      const memberCount = await User.countDocuments({ teamId: team._id });
+      if (memberCount > 1) {
+        if (!newLeaderId) {
+          return res.status(400).json({
+            message: 'Leader must transfer ownership before leaving',
+            requiresTransfer: true,
+          });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(newLeaderId)) {
+          return res.status(400).json({ message: 'Invalid new leader ID' });
+        }
+
+        if (newLeaderId.toString() === userId.toString()) {
+          return res.status(400).json({ message: 'New leader must be another member' });
+        }
+
+        const newLeader = await User.findOne({ _id: newLeaderId, teamId: team._id });
+        if (!newLeader) {
+          return res.status(400).json({ message: 'New leader must be a team member' });
+        }
+
+        team.createdBy = newLeader._id;
+      } else {
+        await Team.deleteOne({ _id: team._id });
+        user.teamId = null;
+        await user.save();
+        return res.json({ message: 'You left and deleted the team (as creator)' });
+      }
     }
 
     team.memberCount = Math.max(0, (team.memberCount || 0) - 1);

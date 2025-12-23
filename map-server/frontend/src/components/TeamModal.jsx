@@ -1,8 +1,9 @@
 // map-server/frontend/src/components/TeamModal.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTeam } from '../context/TeamContext';
 import { useAuth } from '../context/AuthContext';
 import TeamList from './TeamList';
+import './TeamModal.css';
 
 const TeamModal = ({ isOpen, onClose, mode = 'list', teamId = null }) => {
   const { user } = useAuth();
@@ -22,6 +23,9 @@ const TeamModal = ({ isOpen, onClose, mode = 'list', teamId = null }) => {
   const [teamName, setTeamName] = useState('');
   const [error, setError] = useState('');
   const [stats, setStats] = useState(null);
+  const [activePeriod, setActivePeriod] = useState('today');
+  const [newLeaderId, setNewLeaderId] = useState('');
+  const [showTransferPrompt, setShowTransferPrompt] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -33,23 +37,24 @@ const TeamModal = ({ isOpen, onClose, mode = 'list', teamId = null }) => {
 
   // Update view when currentTeam changes (after creating/joining a team)
   useEffect(() => {
-    console.log('TeamModal: useEffect triggered - currentTeam:', currentTeam, 'activeView:', activeView);
-    if (isOpen && currentTeam && activeView === 'create') {
-      console.log('TeamModal: currentTeam updated, switching to details');
+    if (isOpen && currentTeam && (activeView === 'create' || activeView === 'list')) {
       setActiveView('details');
+      setSelectedTeamId(currentTeam._id);
     }
   }, [currentTeam, isOpen, activeView]);
 
   // Load team stats when viewing details
   useEffect(() => {
-    if (activeView === 'stats' && selectedTeamId) {
+    if (activeView === 'details' && (selectedTeamId || currentTeam?._id)) {
       loadStats();
     }
-  }, [activeView, selectedTeamId]);
+  }, [activeView, selectedTeamId, currentTeam?._id]);
 
   const loadStats = async () => {
     try {
-      const data = await fetchTeamStats(selectedTeamId);
+      const id = selectedTeamId || currentTeam?._id;
+      if (!id) return;
+      const data = await fetchTeamStats(id);
       setStats(data);
     } catch (err) {
       setError('Failed to load team stats');
@@ -125,9 +130,21 @@ const TeamModal = ({ isOpen, onClose, mode = 'list', teamId = null }) => {
     }
 
     try {
-      await leaveTeam();
+      if (isCreator) {
+        const members = currentTeam?.members || [];
+        const otherMembers = members.filter((m) => m._id !== user?._id);
+        if (otherMembers.length > 0 && !newLeaderId) {
+          setShowTransferPrompt(true);
+          return;
+        }
+      }
+      await leaveTeam(newLeaderId || null);
       onClose();
     } catch (err) {
+      if (err?.requiresTransfer) {
+        setShowTransferPrompt(true);
+        return;
+      }
       setError(err.message || 'Failed to leave team');
     }
   };
@@ -151,33 +168,41 @@ const TeamModal = ({ isOpen, onClose, mode = 'list', teamId = null }) => {
   if (!isOpen) return null;
 
   const isCreator = currentTeam && user && currentTeam.createdBy === user._id;
+  const members = currentTeam?.members || [];
+  const otherMembers = useMemo(
+    () => members.filter((m) => m._id !== user?._id),
+    [members, user?._id]
+  );
+  const pixelsPainted = stats?.totalPixels || 0;
+  const headquarters = currentTeam?.overlay
+    ? `${currentTeam.overlay.x}, ${currentTeam.overlay.y}`
+    : 'N/A';
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[2000] p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-800">
-            {activeView === 'list' && 'Teams'}
-            {activeView === 'create' && 'Create New Team'}
-            {activeView === 'details' && 'Team Details'}
-            {activeView === 'stats' && 'Team Statistics'}
-            {activeView === 'edit' && 'Edit Team'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+    <div className="team-modal-overlay">
+      <div className="team-modal-shell">
+        <div className="team-modal-header">
+          <div className="team-modal-title">
+            <span className="team-modal-kicker">Alliance</span>
+            <h2>
+              {activeView === 'list' && 'Teams'}
+              {activeView === 'create' && 'Create Team'}
+              {activeView === 'details' && (currentTeam?.name || 'Team')}
+              {activeView === 'stats' && 'Team Statistics'}
+              {activeView === 'edit' && 'Edit Team'}
+            </h2>
+          </div>
+          <div className="team-modal-actions">
+            <button className="team-modal-icon-btn" onClick={onClose} aria-label="Close">
+              ✕
+            </button>
+          </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="team-modal-body">
           {error && (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
+            <div className="team-error">
               {error}
             </div>
           )}
@@ -187,6 +212,10 @@ const TeamModal = ({ isOpen, onClose, mode = 'list', teamId = null }) => {
             <TeamList
               onTeamClick={handleTeamClick}
               onCreateTeam={() => setActiveView('create')}
+              onJoinedTeam={(id) => {
+                setSelectedTeamId(id);
+                setActiveView('details');
+              }}
             />
           )}
 
@@ -234,80 +263,113 @@ const TeamModal = ({ isOpen, onClose, mode = 'list', teamId = null }) => {
           {activeView === 'details' && (
             <>
               {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+                <div className="team-loading">
+                  <div className="team-spinner" />
                 </div>
               ) : !currentTeam ? (
-                <div className="text-center py-12">
-                  <p className="text-gray-600 mb-4">No team data found</p>
-                  <button
-                    onClick={() => setActiveView('list')}
-                    className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
-                  >
-                    Back to Teams
-                  </button>
+                <div className="team-empty">
+                  <p>No team data found</p>
+                  <button onClick={() => setActiveView('list')}>Back to Teams</button>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-800 mb-2">{currentTeam.name}</h3>
-                    <p className="text-sm text-gray-600">
-                      Created {formatDate(currentTeam.createdAt)}
-                    </p>
+                <div className="team-details-layout">
+                  <div className="team-header-row">
+                    <div className="team-avatar">
+                      <span>■</span>
+                    </div>
+                    <div className="team-header-info">
+                      <p className="team-kicker">Alliance</p>
+                      <h3>{currentTeam.name}</h3>
+                      <p className="team-sub">No description</p>
+                    </div>
+                    <div className="team-header-actions">
+                      {isCreator && (
+                        <button
+                          className="team-pill-btn"
+                          onClick={() => {
+                            setTeamName(currentTeam.name);
+                            setActiveView('edit');
+                          }}
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-purple-50 p-4 rounded-lg">
-                      <p className="text-sm text-purple-600 font-medium">Members</p>
-                      <p className="text-2xl font-bold text-purple-900">{currentTeam.memberCount || 0}</p>
+                  <div className="team-metrics">
+                    <div>
+                      <span>Pixels painted</span>
+                      <strong>{pixelsPainted}</strong>
                     </div>
-                    <div className="bg-indigo-50 p-4 rounded-lg">
-                      <p className="text-sm text-indigo-600 font-medium">Status</p>
-                      <p className="text-lg font-semibold text-indigo-900">
-                        {isCreator ? 'Creator' : 'Member'}
-                      </p>
+                    <div>
+                      <span>Members</span>
+                      <strong>{currentTeam.memberCount || members.length}</strong>
+                    </div>
+                    <div>
+                      <span>Headquarters</span>
+                      <strong>{headquarters}</strong>
                     </div>
                   </div>
 
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => {
-                        setSelectedTeamId(currentTeam._id);
-                        setActiveView('stats');
-                      }}
-                      className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                    >
-                      View Statistics
-                    </button>
-                    {isCreator && (
-                      <button
-                        onClick={() => {
-                          setTeamName(currentTeam.name);
-                          setActiveView('edit');
-                        }}
-                        className="flex-1 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
-                      >
-                        Edit Team
+                  <div className="team-leaderboard-block">
+                    <div className="team-leaderboard-header">
+                      <h4>Leaderboard</h4>
+                      <div className="team-tabs">
+                        <button className={activePeriod === 'today' ? 'is-active' : ''} onClick={() => setActivePeriod('today')}>Today</button>
+                        <button className={activePeriod === 'week' ? 'is-active' : ''} onClick={() => setActivePeriod('week')}>Week</button>
+                        <button className={activePeriod === 'month' ? 'is-active' : ''} onClick={() => setActivePeriod('month')}>Month</button>
+                        <button className={activePeriod === 'all' ? 'is-active' : ''} onClick={() => setActivePeriod('all')}>All time</button>
+                      </div>
+                    </div>
+
+                    <div className="team-table">
+                      <div className="team-table-head">
+                        <span>Player</span>
+                        <span>Pixels painted</span>
+                      </div>
+                      {(stats?.topContributors || []).map((contributor, index) => (
+                        <div className="team-table-row" key={contributor._id || index}>
+                          <div>
+                            <span className="team-rank">{index + 1}</span>
+                            <span className="team-player">{contributor.username}</span>
+                          </div>
+                          <span>{contributor.pixelCount}</span>
+                        </div>
+                      ))}
+                      {(!stats?.topContributors || stats.topContributors.length === 0) && (
+                        <div className="team-table-empty">No data yet</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {showTransferPrompt && isCreator && otherMembers.length > 0 && (
+                    <div className="team-transfer">
+                      <p>Chon nguoi lam leader truoc khi roi team.</p>
+                      <select value={newLeaderId} onChange={(e) => setNewLeaderId(e.target.value)}>
+                        <option value="">-- Chon thanh vien --</option>
+                        {otherMembers.map((member) => (
+                          <option key={member._id} value={member._id}>{member.username}</option>
+                        ))}
+                      </select>
+                      <button className="team-primary" onClick={handleLeaveTeam}>
+                        Xac nhan chuyen quyen va roi
                       </button>
-                    )}
-                  </div>
-
-                  <div className="pt-4 border-t border-gray-200">
+                    </div>
+                  )}
+                  <div className="team-actions">
                     {isCreator ? (
-                      <button
-                        onClick={handleDeleteTeam}
-                        disabled={loading}
-                        className="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
-                      >
-                        {loading ? 'Deleting...' : 'Delete Team'}
-                      </button>
+                      <>
+                        <button className="team-secondary" onClick={handleDeleteTeam}>
+                          Delete Team
+                        </button>
+                        <button className="team-primary" onClick={handleLeaveTeam}>
+                          Leave Team
+                        </button>
+                      </>
                     ) : (
-                      <button
-                        onClick={handleLeaveTeam}
-                        disabled={loading}
-                        className="w-full px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
-                      >
-                        {loading ? 'Leaving...' : 'Leave Team'}
+                      <button className="team-primary" onClick={handleLeaveTeam}>
+                        Leave Team
                       </button>
                     )}
                   </div>

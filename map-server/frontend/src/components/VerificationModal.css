@@ -1,0 +1,20 @@
+/* map-server/frontend/src/components/VerificationModal.css */
+.verification-overlay {
+  position: fixed;
+  left: 50%;
+  bottom: 140px;
+  transform: translateX(-50%);
+  z-index: 1300;
+  pointer-events: none;
+}
+
+.verification-panel {
+  pointer-events: auto;
+  background: #ffffff;
+  padding: 20px 24px;
+  border-radius: 16px;
+  width: min(520px, calc(100vw - 32px));
+  text-align: center;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.2);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}

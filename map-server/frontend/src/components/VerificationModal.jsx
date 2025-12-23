@@ -1,6 +1,7 @@
 // map-server/frontend/src/components/VerificationModal.jsx
 
 import React , { useState, useRef } from 'react';
+import './VerificationModal.css';
 // 1. Import ReCAPTCHA của Google thay vì HCaptcha
 import ReCAPTCHA from 'react-google-recaptcha';
 import { useVerification } from '../context/VerificationContext';
@@ -43,8 +44,8 @@ const VerificationModal = () => {
 
     return (
         // Các lớp CSS cho modal giữ nguyên
-        <div className="modal-overlay">
-            <div className="modal-content" style={{ padding: '2rem', textAlign: 'center' }}>
+        <div className="verification-overlay">
+            <div className="verification-panel">
                 <h3>Vui lòng xác minh bạn không phải là robot</h3>
                 <p>Bạn cần hoàn thành bước này để tiếp tục.</p>
 
