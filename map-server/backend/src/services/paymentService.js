@@ -4,6 +4,7 @@ import { getPackageById, getTotalDroplets } from '../config/paymentPackages.js';
 import Payment from '../models/Payment.js';
 import * as walletService from './walletService.js';
 import User from '../models/User.js';
+import { createNotification } from './notificationService.js';
 
 /**
  * Create a Stripe Payment Intent for a droplet package purchase
@@ -160,7 +161,28 @@ const handlePaymentSuccess = async (paymentIntent, io) => {
 
     console.log(`✅ Payment succeeded: ${id} - Awarded ${totalDroplets} droplets to user ${payment.userId}`);
 
-    // Send real-time notification via Socket.IO
+    // Create payment success notification (push type)
+    try {
+      const packageData = getPackageById(payment.packageId);
+      await createNotification({
+        userId: payment.userId,
+        type: 'payment_success',
+        title: 'Payment Successful!',
+        message: `Your purchase of ${packageData?.name || payment.packageId} was successful. ${totalDroplets} droplets have been added to your wallet!`,
+        data: {
+          paymentId: payment._id,
+          packageId: payment.packageId,
+          packageName: packageData?.name,
+          dropletsAwarded: totalDroplets,
+          bonusDroplets: payment.bonusDroplets,
+          amount: payment.amount,
+        },
+      });
+    } catch (notifError) {
+      console.warn('⚠️ Failed to create payment_success notification:', notifError.message);
+    }
+
+    // Send real-time notification via Socket.IO (legacy)
     if (io) {
       io.to(`user:${payment.userId}`).emit('payment_success', {
         paymentId: payment._id,
