@@ -5,8 +5,8 @@ import Challenge from '../models/Challenge.js';
 import UserChallenge from '../models/UserChallenge.js';
 import UserStreak from '../models/UserStreak.js';
 import User from '../models/User.js';
-import Badge from '../models/Badge.js';
-import * as walletService from './walletService.js';
+import moment from 'moment-timezone';
+import { createNotification } from './notificationService.js';
 
 /**
  * Get or create today's challenges for a user
@@ -114,13 +114,30 @@ export const trackPixelAction = async (userId, pixelData, io) => {
           $inc: { challengePoints: challenge.reward.points }
         });
 
-        // Emit event to user
+        // Emit event to user (legacy Socket.IO event)
         if (io) {
           io.to(`user:${userId}`).emit('challenge_completed', {
             challengeId: challenge._id,
             title: challenge.title,
             points: challenge.reward.points
           });
+        }
+
+        // Create notification (pull-based, persisted)
+        try {
+          await createNotification({
+            userId,
+            type: 'challenge_completed',
+            title: 'Challenge Completed!',
+            message: `You completed "${challenge.title}" and earned ${challenge.reward.points} points!`,
+            data: {
+              challengeId: challenge._id,
+              challengeTitle: challenge.title,
+              points: challenge.reward.points,
+            },
+          });
+        } catch (notifError) {
+          console.warn('⚠️ Failed to create challenge notification:', notifError.message);
         }
       }
 
@@ -317,10 +334,36 @@ export const claimChallengeReward = async (userId, userChallengeId) => {
         dropletsAwarded: points,
         totalPoints: user.challengePoints,
         currentStreak: user.challengeStreak,
-        newBadges
+        newBadges,
+        userId
       };
     });
-
+    
+    // Create notifications for new badges (outside transaction)
+    if (result.newBadges && result.newBadges.length > 0) {
+      for (const badge of result.newBadges) {
+        try {
+          await createNotification({
+            userId: result.userId,
+            type: 'badge_earned',
+            title: 'New Badge Earned!',
+            message: `Congratulations! You earned the "${badge.name}" badge!`,
+            data: {
+              badgeId: badge._id,
+              badgeName: badge.name,
+              badgeKey: badge.key,
+              badgeDescription: badge.description,
+            },
+          });
+        } catch (notifError) {
+          console.warn('⚠️ Failed to create badge notification:', notifError.message);
+        }
+      }
+    }
+    
+    // Remove userId from result before returning
+    delete result.userId;
+    
     return result;
   } catch (error) {
     throw new Error(`Failed to claim reward: ${error.message}`);

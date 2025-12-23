@@ -11,7 +11,7 @@ const outboxSchema = new mongoose.Schema({
   eventType: {
     type: String,
     required: true,
-    enum: ['pixel_placed'], // Can add more event types later
+    enum: ['pixel_placed', 'notification'], // Can add more event types later
     index: true,
   },
   payload: {

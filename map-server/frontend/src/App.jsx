@@ -35,6 +35,8 @@ import AppealModal from './components/AppealModal.jsx';
 /* Store & Challenge */
 import ChallengePanel from './components/ChallengePanel.jsx';
 import Store from './components/Store.jsx';
+import NotificationBell from './components/NotificationBell.jsx';
+import NotificationToast from './components/NotificationToast.jsx';
 
 /* ================= CONTEXTS & SERVICES ================= */
 import { useAuth } from './context/AuthContext.jsx';
@@ -136,11 +138,21 @@ const MapZoomController = ({ setCanPaint }) => {
 const AuthControls = () => {
   const { isLoggedIn, user, openAuthModal } = useAuth();
   return (
-      <div className="absolute top-4 right-4 z-[1200] auth-controls-ignore">
-        {isLoggedIn && user ? <Profile /> : (
-            <button onClick={openAuthModal} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Đăng nhập</button>
-        )}
-      </div>
+    <div className="absolute top-4 right-4 z-[1200] auth-controls-ignore flex items-center gap-3">
+      {isLoggedIn && user ? (
+        <>
+          <NotificationBell />
+          <Profile />
+        </>
+      ) : (
+        <button
+          onClick={openAuthModal}
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md"
+        >
+          Đăng nhập
+        </button>
+      )}
+    </div>
   );
 };
 
@@ -217,68 +229,28 @@ const App = () => {
   };
 
   return (
-      <div style={{ height: '100vh', width: '100vw', position: 'relative' }}>
-        {isAuthModalOpen && <AuthModal onClose={closeAuthModal} />}
-        {isVerificationRequired && <VerificationModal />}
-        {isAppealModalOpen && <AppealModal onClose={() => setIsAppealModalOpen(false)} />}
+    <div style={{ position: 'relative', height: '100vh', width: '100vw' }}>
+      {/* Notification Toasts */}
+      <NotificationToast />
+      
+      {isAuthModalOpen && <AuthModal onClose={closeAuthModal} />}
+      {isVerificationRequired && <VerificationModal />}
 
-        {isPixelInfoModalOpen && pixelInfo && (
-            <PixelInfoModal pixel={pixelInfo} onClose={() => setIsPixelInfoModalOpen(false)} onStartMultiPaint={handleStartPaint} />
-        )}
+      {zoomWarning && (
+        <ZoomWarningToast
+          message={zoomWarning}
+          onClose={() => setZoomWarning(null)}
+        />
+      )}
 
-        {showZoomWarning && (
-            <ZoomWarningToast message="🔍 Phóng to thêm để tô màu!" onClose={() => setShowZoomWarning(false)} />
-        )}
-
-        <div id="map-capture-area" style={{ height: '100%' }}>
-          <MapContainer
-              center={[0, 0]}
-              zoom={DEFAULT_ZOOM}
-              maxZoom={20}
-              style={{ height: '100%', backgroundColor: '#aad3df' }}
-              worldCopyJump={true}
-              preferCanvas
-              maxBounds={VISUAL_BOUNDS} 
-              maxBoundsViscosity={1.0}
-          >
-            <TileLayer url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" attribution="&copy; Google Maps" />
-            
-            <MapUrlHandler />
-            <MapInitializer />
-            <LocationButton />
-            <MapZoomController setCanPaint={setCanPaint} />
-
-            <OverlayLayer />
-            <OverlayMapHandler />
-            <PingLayer currentTeamId={currentTeam?._id} />
-            <HeatmapLayer visible={isHeatmapOn} />
-            <AdminAreaSelector isActive={isWipeMode} onComplete={() => setIsWipeMode(false)} onCancel={() => setIsWipeMode(false)} />
-
-            <GlobalCanvasGrid
-                selectedPixelColor={selectedPixelColor}
-                pendingPixels={pendingPixels}
-                setPendingPixels={setPendingPixels}
-                canPaint={canPaint}
-                onZoomWarning={() => setShowZoomWarning(true)}
-                isPaletteVisible={isPaletteVisible}
-                onPixelClickForInfo={handlePixelClick}
-                pixelInfo={pixelInfo}
-            />
-            <FavoriteMarkers favorites={favorites} />
-          </MapContainer>
-        </div>
-
-        <ChatBox />
-        <AuthControls />
-        <AdminManager onStartWipe={() => setIsWipeMode(true)} />
-
-        <AuxiliaryButtons
-            openLeaderboard={() => setIsLeaderboardOpen(true)}
-            openTeamModal={() => setIsTeamModalOpen(true)}
-            currentTeam={currentTeam}
-            openStore={() => setIsStoreOpen(true)}
-            isHeatmapOn={isHeatmapOn}
-            setIsHeatmapOn={setIsHeatmapOn}
+      {isPixelInfoModalOpen && (
+        <PixelInfoModal
+          pixel={pixelInfo}
+          onClose={() => setIsPixelInfoModalOpen(false)}
+          onStartMultiPaint={handleStartMultiPaint}
+          onToggleFavorite={handleToggleFavorite}
+          isFavorite={favorites.some((p) => p.gx === pixelInfo?.gx && p.gy === pixelInfo?.gy)}
+          onShare={handleShare}
         />
 
         <SoundSettings isOpen={isSoundOpen} onToggle={() => setIsSoundOpen(!isSoundOpen)} />
