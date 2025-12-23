@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useMap, Marker } from 'react-leaflet';
 import L from 'leaflet';
+import { LOCATION_FLYTO_ZOOM } from '../config/constants';
 
 // Tạo Icon chấm xanh nhấp nháy từ CSS
 const locationIcon = L.divIcon({
@@ -37,7 +38,7 @@ const LocationButton = () => {
         setPosition(latlng);
 
         // 2. Bay đến vị trí đó (Zoom level 16 để nhìn rõ)
-        map.flyTo(latlng, 16, {
+        map.flyTo(latlng, LOCATION_FLYTO_ZOOM, {
           animate: true,
           duration: 1.5
         });

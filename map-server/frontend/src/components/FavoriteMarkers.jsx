@@ -7,7 +7,7 @@ import {
   GRID_HEIGHT,
   GRID_WIDTH,
   WORLD_BOUNDS,
-  MIN_ZOOM_TO_SHOW_PIXELS
+  FAVORITE_TARGET_ZOOM
 } from '../config/constants';
 
 // Tạo Icon ngôi sao bằng SVG (dùng DivIcon để nhẹ và sắc nét)
@@ -46,7 +46,7 @@ const FavoriteMarkers = ({ favorites, onMarkerClick }) => {
     
     // 1. Bay đến vị trí đó
     // Zoom vào mức MIN_ZOOM_TO_SHOW_PIXELS + 2 để nhìn rõ
-    map.flyTo(center, Math.max(map.getZoom(), MIN_ZOOM_TO_SHOW_PIXELS + 2), {
+    map.flyTo(center, Math.max(map.getZoom(), FAVORITE_TARGET_ZOOM), {
       duration: 1.5
     });
 

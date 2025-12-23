@@ -1,3 +1,4 @@
+// map-server/frontend/src/components/ChallengePanel.jsx
 import React, { useState } from 'react';
 import { useChallenge } from '../context/ChallengeContext';
 import { useAuth } from '../context/AuthContext';

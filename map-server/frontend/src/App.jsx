@@ -48,7 +48,10 @@ import {
   VISUAL_BOUNDS,
   MIN_ZOOM_TO_SHOW_PIXELS,
   GRID_WIDTH,
-  GRID_HEIGHT
+  GRID_HEIGHT,
+  DEFAULT_ZOOM,
+  PIXEL_DETAIL_ZOOM,
+  ZOOM_TO_PAINT
 } from './config/constants';
 
 /* ================= HELPERS ================= */
@@ -77,7 +80,7 @@ const MapUrlHandler = () => {
     const gx = params.get('gx');
     const gy = params.get('gy');
     if (gx && gy) {
-      map.setView(gridToLatLng(+gx, +gy), 18, { animate: false });
+      map.setView(gridToLatLng(+gx, +gy), PIXEL_DETAIL_ZOOM, { animate: false });
       done.current = true;
     }
   }, [map]);
@@ -126,7 +129,7 @@ const MapZoomController = ({ setCanPaint }) => {
   }, [map, setCanPaint]);
 
   if (!show) return null;
-  return <ZoomToPaintButton onClick={() => map.flyTo(map.getCenter(), MIN_ZOOM_TO_SHOW_PIXELS + 1)} />;
+  return <ZoomToPaintButton onClick={() => map.flyTo(map.getCenter(), ZOOM_TO_PAINT)} />;
 };
 
 /* ================= UI ================= */
@@ -230,7 +233,7 @@ const App = () => {
         <div id="map-capture-area" style={{ height: '100%' }}>
           <MapContainer
               center={[0, 0]}
-              zoom={3}
+              zoom={DEFAULT_ZOOM}
               maxZoom={20}
               style={{ height: '100%', backgroundColor: '#aad3df' }}
               worldCopyJump={true}
