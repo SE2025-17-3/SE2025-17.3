@@ -1,3 +1,4 @@
+// map-server/backend/src/services/paymentService.js
 import { getStripeClient, isStripeEnabled } from '../config/stripe.js';
 import { getPackageById, getTotalDroplets } from '../config/paymentPackages.js';
 import Payment from '../models/Payment.js';

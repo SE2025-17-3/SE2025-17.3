@@ -6,19 +6,6 @@ import './EditProfileModal.css';
 const EditProfileModal = ({ closeModal }) => {
     const { user, updateUserContext } = useAuth();
 
-    // --- SỬA LỖI URL ---
-    // Hàm này giúp lấy đúng đường dẫn server chứa ảnh
-    // 1. Nếu build production -> Lấy origin hiện tại (http://136.112.99.88)
-    // 2. Nếu chạy dev -> Lấy localhost:4000
-    const getBaseUrl = () => {
-        if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-        if (import.meta.env.PROD) return window.location.origin;
-        return 'http://localhost:4000';
-    };
-
-    const API_URL = getBaseUrl();
-    // -------------------
-
     const [displayName, setDisplayName] = useState(user.displayName || '');
     const [avatarFile, setAvatarFile] = useState(null);
     const [preview, setPreview] = useState(null);
@@ -58,16 +45,11 @@ const EditProfileModal = ({ closeModal }) => {
         }
     };
 
-    // Helper để hiển thị ảnh: Nếu có preview (vừa chọn) thì dùng preview,
-    // nếu không thì dùng ảnh từ server (kèm API_URL)
+    // Logic hiển thị ảnh: Ưu tiên ảnh xem trước (preview) -> Ảnh hiện tại (user.avatarUrl) -> Mặc định
     const getAvatarSrc = () => {
         if (preview) return preview;
-        if (user.avatarUrl) {
-            // Kiểm tra xem avatarUrl có phải là link tuyệt đối (http...) hay tương đối
-            if (user.avatarUrl.startsWith('http')) return user.avatarUrl;
-            return `${API_URL}${user.avatarUrl}`;
-        }
-        return null; // Hoặc đường dẫn ảnh default nếu muốn
+        if (user.avatarUrl) return user.avatarUrl;
+        return '/default-avatar.png';
     };
 
     return (
@@ -78,10 +60,9 @@ const EditProfileModal = ({ closeModal }) => {
                     <div className="avatar-upload">
                         <label htmlFor="avatar-input">
                             <img
-                                src={getAvatarSrc() || '/default-avatar.png'}
+                                src={getAvatarSrc()}
                                 alt="Avatar Preview"
                                 className="avatar-preview"
-                                // Thêm xử lý lỗi nếu ảnh không load được
                                 onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.png'; }}
                             />
                         </label>

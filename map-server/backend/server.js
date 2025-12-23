@@ -1,9 +1,11 @@
-// D:\Code\SE2025-17.3\map-server\backend\server.js
+// map-server/backend/server.js
+
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import session from 'express-session';
 import MongoStore from 'connect-mongo';
+
 import { connectDB } from './src/config/db.js';
 import app from './src/app.js';
 import { getOutboxPublisher } from './src/workers/outboxPublisher.js';
@@ -12,25 +14,26 @@ import NotificationConsumer from './src/workers/notificationConsumer.js';
 import { closeAllRedisConnections } from './src/config/redis.js';
 import { initializeStripe } from './src/config/stripe.js';
 
+// Chat handler
+import chatHandler from './src/socket/chatHandler.js';
+
 dotenv.config();
 connectDB();
-
-// Initialize Stripe
 initializeStripe();
 
 const server = createServer(app);
+
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const PORT = process.env.PORT || 4000;
 const SESSION_NAME = process.env.SESSION_NAME || 'connect.sid';
-// Kiểm tra xem có đang chạy trên môi trường Production không
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 if (!process.env.SESSION_SECRET || !process.env.MONGO_URI) {
-  console.error("Lỗi: Vui lòng cung cấp SESSION_SECRET và MONGO_URI trong file .env");
+  console.error('❌ Thiếu SESSION_SECRET hoặc MONGO_URI');
   process.exit(1);
 }
 
-// --- CẤU HÌNH SESSION CHO PRODUCTION ---
+/* ===================== SESSION ===================== */
 const sessionConfig = {
   secret: process.env.SESSION_SECRET,
   resave: false,
@@ -38,38 +41,34 @@ const sessionConfig = {
   store: MongoStore.create({
     mongoUrl: process.env.MONGO_URI,
     collectionName: 'sessions',
-    ttl: 14 * 24 * 60 * 60 // Session tồn tại 14 ngày trong DB
+    ttl: 14 * 24 * 60 * 60
   }),
   cookie: {
-    httpOnly: true, // Chặn JS client đọc cookie (chống XSS)
-
-    // QUAN TRỌNG: Trên web thật (HTTPS) phải là true, Localhost là false
+    httpOnly: true,
     secure: IS_PRODUCTION,
-
-    // Nếu Frontend và Backend cùng domain (se2025...codes) dùng 'lax'
-    // Nếu khác domain (api.se2025... và www.se2025...) dùng 'none'
-    sameSite: IS_PRODUCTION ? 'lax' : 'lax',
-
-    maxAge: 1000 * 60 * 60 * 24 // 1 ngày
+    sameSite: 'lax',
+    maxAge: 1000 * 60 * 60 * 24
   },
   name: SESSION_NAME,
-  proxy: true // Bắt buộc khi dùng secure: true sau Nginx
+  proxy: true
 };
 
 app.use(session(sessionConfig));
 
-// --- Cấu hình Socket.IO ---
+/* ===================== SOCKET.IO ===================== */
 const io = new Server(server, {
   cors: {
     origin: FRONTEND_URL,
     credentials: true,
-    methods: ["GET", "POST"]
+    methods: ['GET', 'POST']
   },
-  // Cấu hình thêm cho Socket.IO sau Nginx
   transports: ['websocket', 'polling']
 });
 
-const wrap = middleware => (socket, next) => middleware(socket.request, {}, next);
+// Share session with socket.io
+const wrap = middleware => (socket, next) =>
+    middleware(socket.request, {}, next);
+
 io.use(wrap(session(sessionConfig)));
 
 io.on('connection', (socket) => {
@@ -82,15 +81,17 @@ io.on('connection', (socket) => {
     socket.join(userId.toString()); // For notification consumer
     console.log(`👤 User ${userId} joined personal rooms`);
   }
-  
+
+  /* ===== Chat realtime ===== */
+  chatHandler(io, socket);
+
   socket.on('disconnect', () => {
-    // console.log('🔴 Client đã ngắt kết nối:', socket.id)
+    // console.log('🔴 Socket disconnected:', socket.id);
   });
 });
 
-// Set io instance in app so it's accessible in routes (e.g., payment webhook)
+// Expose io for routes (webhook, payment, etc.)
 app.set('io', io);
-
 app.configureRoutes(io);
 
 // --- Workers ---
@@ -109,18 +110,18 @@ const notificationConsumer = new NotificationConsumer(io, { consumerName: `notif
   }
 })();
 
+/* ===================== GRACEFUL SHUTDOWN ===================== */
 const gracefulShutdown = async (signal) => {
-  console.log(`\n🛑 ${signal} received. Starting graceful shutdown...`);
+  console.log(`\n🛑 ${signal} received`);
   try {
     server.close(() => console.log('✅ HTTP server closed'));
     await outboxPublisher.stop();
     await streamConsumer.stop();
     await notificationConsumer.stop();
     await closeAllRedisConnections();
-    io.close(() => console.log('✅ Socket.IO closed'));
+    io.close(() => console.log('✅ Socket.io closed'));
     process.exit(0);
   } catch (err) {
-    console.error('❌ Error during shutdown:', err);
     process.exit(1);
   }
 };
@@ -128,8 +129,7 @@ const gracefulShutdown = async (signal) => {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
+/* ===================== START SERVER ===================== */
 server.listen(PORT, () => {
-  console.log(`✅ Server đang chạy trên port ${PORT}`);
-  console.log(`📡 Frontend URL: ${FRONTEND_URL}`);
-  console.log(`🔧 Mode: ${IS_PRODUCTION ? 'PRODUCTION (HTTPS)' : 'DEVELOPMENT'}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });

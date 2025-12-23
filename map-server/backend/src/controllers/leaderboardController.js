@@ -1,8 +1,6 @@
-// D:\Code\SE2025-17.3\map-server\backend\src\controllers\leaderboardController.js
-import Pixel from '../models/Pixel.js';
+// map-server/backend/src/controllers/leaderboardController.js
+
 import PixelEvent from '../models/PixelEvent.js';
-import User from '../models/User.js';
-import Team from '../models/Team.js';
 
 // Helpers
 const getDateRange = (period) => {
@@ -37,7 +35,7 @@ const limitNumber = (n, def = 50, max = 100) => {
   return Math.min(num, max);
 };
 
-// GET /api/leaderboard/players?period=today|week|month|all&limit=50
+// GET /api/leaderboard/players
 export const getTopPlayers = async (req, res) => {
   try {
     const { period = 'all', limit = '50' } = req.query;
@@ -63,7 +61,7 @@ export const getTopPlayers = async (req, res) => {
   }
 };
 
-// GET /api/leaderboard/teams?period=today|week|month|all&limit=50
+// GET /api/leaderboard/teams
 export const getTopTeams = async (req, res) => {
   try {
     const { period = 'all', limit = '50' } = req.query;
@@ -84,7 +82,17 @@ export const getTopTeams = async (req, res) => {
       { $limit: limitNumber(limit) },
       { $lookup: { from: 'teams', localField: '_id', foreignField: '_id', as: 'team' } },
       { $unwind: '$team' },
-      { $project: { _id: 0, teamId: '$_id', teamName: '$team.name', pixelCount: '$pixels', lastActivity: 1 } },
+      { 
+        $project: { 
+          _id: 0, 
+          teamId: '$_id', 
+          teamName: '$team.name', 
+          pixelCount: '$pixels', 
+          lastActivity: 1,
+          // Lấy trực tiếp memberCount đã được tính toán trong Collection Team
+          memberCount: '$team.memberCount' 
+        } 
+      },
     ];
 
     const top = await PixelEvent.aggregate(pipeline);
@@ -130,7 +138,17 @@ export const getLeaderboardCombined = async (req, res) => {
       { $limit: teamsLimitVal },
       { $lookup: { from: 'teams', localField: '_id', foreignField: '_id', as: 'team' } },
       { $unwind: '$team' },
-      { $project: { _id: 0, teamId: '$_id', teamName: '$team.name', pixelCount: '$pixels', memberCount: { $size: { $ifNull: ['$team.members', []] } }, lastActivity: 1 } },
+      { 
+        $project: { 
+          _id: 0, 
+          teamId: '$_id', 
+          teamName: '$team.name', 
+          pixelCount: '$pixels', 
+          // Sửa ở đây: Lấy trực tiếp memberCount
+          memberCount: '$team.memberCount', 
+          lastActivity: 1 
+        } 
+      },
     ]);
 
     const [players, teams] = await Promise.all([playersPromise, teamsPromise]);

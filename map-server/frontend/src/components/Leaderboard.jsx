@@ -1,10 +1,11 @@
-// D:\Code\SE2025-17.3\map-server\frontend\src\components\Leaderboard.jsx
+// map-server/frontend/src/components/Leaderboard.jsx
+
 import React, { useState, useEffect } from 'react';
 import { getLeaderboard } from '../services/leaderboardApi';
 
-const Leaderboard = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState('players'); // 'players' or 'teams'
-  const [period, setPeriod] = useState('all'); // 'today', 'week', 'month', 'all'
+const Leaderboard = ({ isOpen, onClose, onTeamClick }) => {
+  const [activeTab, setActiveTab] = useState('players');
+  const [period, setPeriod] = useState('all');
   const [players, setPlayers] = useState([]);
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -41,8 +42,8 @@ const Leaderboard = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[2000] p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[2000] p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col animate-fade-in-down">
         {/* Header */}
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between mb-4">
@@ -58,14 +59,14 @@ const Leaderboard = ({ isOpen, onClose }) => {
           </div>
 
           {/* Period Filter */}
-          <div className="flex gap-2 mb-4">
+          <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
             {periodOptions.map((option) => (
               <button
                 key={option.value}
                 onClick={() => setPeriod(option.value)}
-                className={`px-4 py-2 rounded-lg transition-all ${
+                className={`px-4 py-2 rounded-lg transition-all text-sm font-medium whitespace-nowrap ${
                   period === option.value
-                    ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-md'
+                    ? 'bg-purple-600 text-white shadow-md'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -78,9 +79,9 @@ const Leaderboard = ({ isOpen, onClose }) => {
           <div className="flex gap-2">
             <button
               onClick={() => setActiveTab('players')}
-              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${
+              className={`flex-1 py-2 px-4 rounded-lg font-bold transition-all ${
                 activeTab === 'players'
-                  ? 'bg-blue-500 text-white'
+                  ? 'bg-blue-500 text-white shadow'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -88,9 +89,9 @@ const Leaderboard = ({ isOpen, onClose }) => {
             </button>
             <button
               onClick={() => setActiveTab('teams')}
-              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${
+              className={`flex-1 py-2 px-4 rounded-lg font-bold transition-all ${
                 activeTab === 'teams'
-                  ? 'bg-purple-500 text-white'
+                  ? 'bg-purple-500 text-white shadow'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -100,63 +101,64 @@ const Leaderboard = ({ isOpen, onClose }) => {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
           {error && (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-center">
               {error}
             </div>
           )}
 
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-purple-600"></div>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
+              {/* --- PLAYERS LIST --- */}
               {activeTab === 'players' && (
                 <>
                   {players.length === 0 ? (
                     <div className="text-center py-12 text-gray-500">
-                      No players found for this period
+                      Chưa có dữ liệu xếp hạng.
                     </div>
                   ) : (
                     players.map((player, index) => (
                       <div
                         key={player._id || player.username || index}
-                        className={`flex items-center justify-between p-4 rounded-lg transition-all ${
+                        className={`flex items-center justify-between p-4 rounded-xl border shadow-sm transition-all hover:scale-[1.01] ${
                           index === 0
-                            ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 border-2 border-yellow-400'
+                            ? 'bg-yellow-50 border-yellow-400 ring-1 ring-yellow-200'
                             : index === 1
-                            ? 'bg-gradient-to-r from-gray-100 to-gray-50 border-2 border-gray-400'
+                            ? 'bg-gray-50 border-gray-400'
                             : index === 2
-                            ? 'bg-gradient-to-r from-orange-100 to-orange-50 border-2 border-orange-400'
-                            : 'bg-gray-50 hover:bg-gray-100'
+                            ? 'bg-orange-50 border-orange-400'
+                            : 'bg-white border-gray-200 hover:shadow-md'
                         }`}
                       >
                         <div className="flex items-center gap-4">
                           <span
-                            className={`flex items-center justify-center w-10 h-10 rounded-full font-bold text-lg ${
+                            className={`flex items-center justify-center w-10 h-10 rounded-full font-bold text-lg shadow-sm ${
                               index === 0
-                                ? 'bg-yellow-500 text-white'
+                                ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white'
                                 : index === 1
-                                ? 'bg-gray-400 text-white'
+                                ? 'bg-gradient-to-br from-gray-300 to-gray-500 text-white'
                                 : index === 2
-                                ? 'bg-orange-500 text-white'
-                                : 'bg-gray-300 text-gray-700'
+                                ? 'bg-gradient-to-br from-orange-400 to-red-500 text-white'
+                                : 'bg-gray-200 text-gray-600'
                             }`}
                           >
                             {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
                           </span>
                           <div>
-                            <p className="font-semibold text-gray-800">{player.username}</p>
+                            <p className="font-bold text-gray-800 text-lg">{player.username}</p>
                             {player.teamName && (
-                              <p className="text-sm text-gray-600">Team: {player.teamName}</p>
+                              <p className="text-sm text-gray-500">Team: <span className="font-medium text-gray-700">{player.teamName}</span></p>
                             )}
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-xl font-bold text-purple-600">{player.pixelCount}</p>
-                          <p className="text-xs text-gray-500">pixels</p>
+                          <p className="text-xl font-bold text-gray-700">{player.pixelCount}</p> 
+                          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">pixels</p>
                         </div>
                       </div>
                     ))
@@ -164,48 +166,55 @@ const Leaderboard = ({ isOpen, onClose }) => {
                 </>
               )}
 
+              {/* --- TEAMS LIST --- */}
               {activeTab === 'teams' && (
                 <>
                   {teams.length === 0 ? (
                     <div className="text-center py-12 text-gray-500">
-                      No teams found for this period
+                      Chưa có dữ liệu Team.
                     </div>
                   ) : (
                     teams.map((team, index) => (
                       <div
-                        key={team._id || team.teamName || index}
-                        className={`flex items-center justify-between p-4 rounded-lg transition-all ${
+                        key={team.teamId || index}
+                        // --- Thêm sự kiện onClick để xem chi tiết team ---
+                        onClick={() => onTeamClick && onTeamClick(team.teamId)}
+                        className={`flex items-center justify-between p-4 rounded-xl border shadow-sm transition-all hover:scale-[1.01] cursor-pointer ${
                           index === 0
-                            ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 border-2 border-yellow-400'
+                            ? 'bg-yellow-50 border-yellow-400 ring-1 ring-yellow-200'
                             : index === 1
-                            ? 'bg-gradient-to-r from-gray-100 to-gray-50 border-2 border-gray-400'
+                            ? 'bg-gray-50 border-gray-400'
                             : index === 2
-                            ? 'bg-gradient-to-r from-orange-100 to-orange-50 border-2 border-orange-400'
-                            : 'bg-gray-50 hover:bg-gray-100'
+                            ? 'bg-orange-50 border-orange-400'
+                            : 'bg-white border-gray-200 hover:shadow-md'
                         }`}
+                        title="Click để xem thành viên"
                       >
                         <div className="flex items-center gap-4">
                           <span
-                            className={`flex items-center justify-center w-10 h-10 rounded-full font-bold text-lg ${
+                            className={`flex items-center justify-center w-10 h-10 rounded-full font-bold text-lg shadow-sm ${
                               index === 0
-                                ? 'bg-yellow-500 text-white'
+                                ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white'
                                 : index === 1
-                                ? 'bg-gray-400 text-white'
+                                ? 'bg-gradient-to-br from-gray-300 to-gray-500 text-white'
                                 : index === 2
-                                ? 'bg-orange-500 text-white'
-                                : 'bg-gray-300 text-gray-700'
+                                ? 'bg-gradient-to-br from-orange-400 to-red-500 text-white'
+                                : 'bg-gray-200 text-gray-600'
                             }`}
                           >
                             {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
                           </span>
                           <div>
-                            <p className="font-semibold text-gray-800">{team.teamName}</p>
-                            <p className="text-sm text-gray-600">{team.memberCount} members</p>
+                            <p className="font-bold text-gray-800 text-lg hover:text-blue-600 transition-colors">
+                                {team.teamName}
+                            </p>
+                            {/* Hiển thị số thành viên đúng */}
+                            <p className="text-sm text-gray-500">{team.memberCount || 0} members</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-xl font-bold text-purple-600">{team.pixelCount}</p>
-                          <p className="text-xs text-gray-500">pixels</p>
+                          <p className="text-xl font-bold text-gray-700">{team.pixelCount}</p>
+                          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">pixels</p>
                         </div>
                       </div>
                     ))

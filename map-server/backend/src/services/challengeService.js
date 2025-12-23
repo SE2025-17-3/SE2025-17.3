@@ -1,4 +1,6 @@
-// backend/src/services/challengeService.js
+// map-server\backend\src\services\challengeService.js
+import mongoose from 'mongoose';
+import moment from 'moment-timezone';
 import Challenge from '../models/Challenge.js';
 import UserChallenge from '../models/UserChallenge.js';
 import UserStreak from '../models/UserStreak.js';
@@ -100,7 +102,7 @@ export const trackPixelAction = async (userId, pixelData, io) => {
     });
 
     if (userChallenge) {
-      userChallenge.progress += 1;
+      userChallenge.progress += pixelData.length;
 
       // Check if challenge is completed
       if (userChallenge.progress >= challenge.goal.count && !userChallenge.completed) {
@@ -114,7 +116,7 @@ export const trackPixelAction = async (userId, pixelData, io) => {
 
         // Emit event to user (legacy Socket.IO event)
         if (io) {
-          io.to(userId.toString()).emit('challenge_completed', {
+          io.to(`user:${userId}`).emit('challenge_completed', {
             challengeId: challenge._id,
             title: challenge.title,
             points: challenge.reward.points
@@ -178,7 +180,7 @@ export const updateStreak = async (userId, io) => {
 
       // Emit streak update
       if (io) {
-        io.to(userId.toString()).emit('streak_updated', {
+        io.to(`user:${userId}`).emit('streak_updated', {
           currentStreak: userStreak.currentStreak,
           longestStreak: userStreak.longestStreak
         });
@@ -250,43 +252,39 @@ export const getUserChallengeStats = async (userId) => {
 
 /**
  * Claim reward for completed challenge
- * Converts points to droplets (1 point = 1 droplet)
- * Updates streak and awards badges
  */
 export const claimChallengeReward = async (userId, userChallengeId) => {
-  const mongoose = (await import('mongoose')).default;
-  const walletService = await import('./walletService.js');
-  const Badge = (await import('../models/Badge.js')).default;
-  
   const session = await mongoose.startSession();
-  
+
   try {
     let result;
-    
+
     await session.withTransaction(async () => {
       // 1. Get user challenge
       const userChallenge = await UserChallenge.findById(userChallengeId)
         .populate('challengeId')
         .session(session);
-      
+
       if (!userChallenge || userChallenge.userId.toString() !== userId.toString()) {
         throw new Error('Challenge not found or unauthorized');
       }
-      
+
       if (!userChallenge.completed) {
         throw new Error('Challenge not completed yet');
       }
-      
+
       if (userChallenge.rewardClaimed) {
         throw new Error('Reward already claimed');
       }
-      
+
       // 2. Get user
       const user = await User.findById(userId).session(session);
       const challenge = userChallenge.challengeId;
       const points = challenge.reward.points;
-      
-      // 3. Award droplets (1 point = 1 droplet)
+
+      // 3. Award droplets
+      // Note: walletService.addDroplets might create its own transaction/session inside.
+      // If it supports passing session, we should pass it. Assuming it handles its own logic:
       await walletService.addDroplets(
         userId,
         points,
@@ -297,44 +295,40 @@ export const claimChallengeReward = async (userId, userChallengeId) => {
           points
         }
       );
-      
+
       // 4. Update user challenge points and total
-      user.challengePoints += points;
-      user.totalChallengesCompleted += 1;
-      
-      // 5. Update streak
+      user.challengePoints = (user.challengePoints || 0) + points;
+      user.totalChallengesCompleted = (user.totalChallengesCompleted || 0) + 1;
+
+      // 5. Update streak logic (simplified for claim action)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const lastDate = user.lastChallengeDate ? new Date(user.lastChallengeDate) : null;
-      if (lastDate) {
-        lastDate.setHours(0, 0, 0, 0);
-      }
-      
+      if (lastDate) lastDate.setHours(0, 0, 0, 0);
+
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
-      
+
+      // Only increment streak if not already done today
       if (!lastDate || lastDate.getTime() === yesterday.getTime()) {
-        // Continue streak
-        user.challengeStreak += 1;
-      } else if (lastDate.getTime() === today.getTime()) {
-        // Already completed today, don't increment
-      } else {
-        // Streak broken, reset to 1
+        user.challengeStreak = (user.challengeStreak || 0) + 1;
+      } else if (lastDate.getTime() !== today.getTime()) {
+        // Reset streak if missed days
         user.challengeStreak = 1;
       }
-      
+
       user.lastChallengeDate = today;
-      
-      // 6. Check and award badges
-      const newBadges = await checkAndAwardBadges(user, session, Badge);
-      
-      // 7. Mark reward as claimed
+
+      // 6. Check badges
+      const newBadges = await checkAndAwardBadges(user, session);
+
+      // 7. Save
       userChallenge.rewardClaimed = true;
       userChallenge.claimedAt = new Date();
       await userChallenge.save({ session });
       await user.save({ session });
-      
+
       result = {
         success: true,
         dropletsAwarded: points,
@@ -378,29 +372,24 @@ export const claimChallengeReward = async (userId, userChallengeId) => {
   }
 };
 
-/**
- * Check and award badges based on streak
- */
-const checkAndAwardBadges = async (user, session, Badge) => {
+const checkAndAwardBadges = async (user, session) => {
   const newBadges = [];
-  const streak = user.challengeStreak;
-  
-  // Get all badges
+  const streak = user.challengeStreak || 0;
+
   const badges = await Badge.find({}).session(session);
   const badgeMap = {};
   badges.forEach(b => badgeMap[b.key] = b);
-  
-  // Check 7-day streak
-  if (streak >= 7 && badgeMap['week_warrior'] && !user.badges.some(b => b.equals(badgeMap['week_warrior']._id))) {
-    user.badges.push(badgeMap['week_warrior']._id);
-    newBadges.push(badgeMap['week_warrior']);
-  }
-  
-  // Check 30-day streak
-  if (streak >= 30 && badgeMap['month_master'] && !user.badges.some(b => b.equals(badgeMap['month_master']._id))) {
-    user.badges.push(badgeMap['month_master']._id);
-    newBadges.push(badgeMap['month_master']);
-  }
-  
+
+  // Logic check badge
+  const awardBadge = (key) => {
+    if (badgeMap[key] && !user.badges.some(b => b.equals(badgeMap[key]._id))) {
+      user.badges.push(badgeMap[key]._id);
+      newBadges.push(badgeMap[key]);
+    }
+  };
+
+  if (streak >= 7) awardBadge('week_warrior');
+  if (streak >= 30) awardBadge('month_master');
+
   return newBadges;
 };

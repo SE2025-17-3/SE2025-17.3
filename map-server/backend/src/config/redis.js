@@ -1,133 +1,115 @@
+// map-server/backend/src/config/redis.js
+
 import Redis from 'ioredis';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-const REDIS_ENABLED = process.env.REDIS_ENABLED === 'true';
+// ƯU TIÊN:
+// 1. REDIS_URL  (vd: redis://redis:6379 trong Docker)
+// 2. REDIS_HOST + REDIS_PORT
+// 3. Mặc định: redis://127.0.0.1:6379 (chạy local)
+const REDIS_HOST = process.env.REDIS_HOST || '127.0.0.1';
+const REDIS_PORT = process.env.REDIS_PORT || 6379;
+const REDIS_URL = process.env.REDIS_URL || `redis://${REDIS_HOST}:${REDIS_PORT}`;
 
-// Create separate clients for different purposes
-// Publisher and subscriber should use different connections
+// Clients riêng biệt cho các mục đích khác nhau
 let publisherClient = null;
 let subscriberClient = null;
-let generalClient = null;
 
 /**
- * Check if Redis is enabled
+ * Kiểm tra Redis có được bật hay không
+ * (dùng cho Outbox, Stream Consumer, v.v.)
  */
-export const isRedisEnabled = () => REDIS_ENABLED;
+export const isRedisEnabled = () => {
+  return !!REDIS_URL;
+};
 
 /**
- * Get Redis client for publishing to streams
+ * Internal helper: tạo client Redis với cấu hình chung
+ */
+const createRedisClient = (label) => {
+  const client = new Redis(REDIS_URL, {
+    enableReadyCheck: true,
+    maxRetriesPerRequest: null, // Quan trọng cho Redis Streams
+    retryStrategy(times) {
+      const delay = Math.min(times * 50, 2000);
+      return delay;
+    },
+    reconnectOnError(err) {
+      console.error(`❌ Redis ${label} error:`, err.message);
+      return true; // Luôn reconnect
+    },
+  });
+
+  client.on('connect', () => console.log(`🔗 Redis ${label} connected`));
+  client.on('error', (err) =>
+      console.error(`❌ Redis ${label} connection error:`, err.message)
+  );
+
+  return client;
+};
+
+// --- QUAN TRỌNG: EXPORT CLIENT CHUNG ---
+// Khởi tạo sẵn để controller dùng trực tiếp
+export const redis = createRedisClient('General');
+
+export const getRedisClient = () => redis;
+
+/**
+ * Redis client cho Publisher (Lazy load)
  */
 export const getPublisher = () => {
-  if (!REDIS_ENABLED) {
-    return null;
-  }
   if (!publisherClient) {
-    publisherClient = new Redis(REDIS_URL, {
-      enableReadyCheck: true,
-      maxRetriesPerRequest: 3,
-      retryStrategy(times) {
-        const delay = Math.min(times * 50, 2000);
-        return delay;
-      },
-      reconnectOnError(err) {
-        console.error('❌ Redis Publisher error:', err.message);
-        return true; // Reconnect on all errors
-      }
-    });
-
-    publisherClient.on('connect', () => console.log('🔗 Redis Publisher connected'));
-    publisherClient.on('error', (err) => console.error('❌ Redis Publisher error:', err));
-    publisherClient.on('close', () => console.log('🔌 Redis Publisher disconnected'));
+    publisherClient = createRedisClient('Publisher');
   }
   return publisherClient;
 };
 
 /**
- * Get Redis client for consuming streams
+ * Redis client cho Subscriber / Consumer (Lazy load)
  */
 export const getSubscriber = () => {
-  if (!REDIS_ENABLED) {
-    return null;
-  }
   if (!subscriberClient) {
-    subscriberClient = new Redis(REDIS_URL, {
-      enableReadyCheck: true,
-      maxRetriesPerRequest: 3,
-      retryStrategy(times) {
-        const delay = Math.min(times * 50, 2000);
-        return delay;
-      },
-      reconnectOnError(err) {
-        console.error('❌ Redis Subscriber error:', err.message);
-        return true;
-      }
-    });
-
-    subscriberClient.on('connect', () => console.log('🔗 Redis Subscriber connected'));
-    subscriberClient.on('error', (err) => console.error('❌ Redis Subscriber error:', err));
-    subscriberClient.on('close', () => console.log('🔌 Redis Subscriber disconnected'));
+    subscriberClient = createRedisClient('Subscriber');
   }
   return subscriberClient;
 };
 
 /**
- * Get general-purpose Redis client (for caching, etc.)
- */
-export const getRedisClient = () => {
-  if (!REDIS_ENABLED) {
-    return null;
-  }
-  if (!generalClient) {
-    generalClient = new Redis(REDIS_URL, {
-      enableReadyCheck: true,
-      maxRetriesPerRequest: 3,
-      retryStrategy(times) {
-        const delay = Math.min(times * 50, 2000);
-        return delay;
-      },
-      reconnectOnError(err) {
-        console.error('❌ Redis General Client error:', err.message);
-        return true;
-      }
-    });
-
-    generalClient.on('connect', () => console.log('🔗 Redis General Client connected'));
-    generalClient.on('error', (err) => console.error('❌ Redis General Client error:', err));
-    generalClient.on('close', () => console.log('🔌 Redis General Client disconnected'));
-  }
-  return generalClient;
-};
-
-/**
- * Gracefully close all Redis connections
+ * Gracefully close tất cả Redis connections
  */
 export const closeAllRedisConnections = async () => {
-  if (!REDIS_ENABLED) {
-    console.log('⏭️ Redis not enabled, no connections to close');
-    return;
-  }
-  
   console.log('🔌 Closing all Redis connections...');
   const promises = [];
-  
+
+  promises.push(
+      redis.quit().catch((err) =>
+          console.error('Error closing general client:', err)
+      )
+  );
+
   if (publisherClient) {
-    promises.push(publisherClient.quit().catch(err => console.error('Error closing publisher:', err)));
+    promises.push(
+        publisherClient.quit().catch((err) =>
+            console.error('Error closing publisher:', err)
+        )
+    );
   }
+
   if (subscriberClient) {
-    promises.push(subscriberClient.quit().catch(err => console.error('Error closing subscriber:', err)));
+    promises.push(
+        subscriberClient.quit().catch((err) =>
+            console.error('Error closing subscriber:', err)
+        )
+    );
   }
-  if (generalClient) {
-    promises.push(generalClient.quit().catch(err => console.error('Error closing general client:', err)));
-  }
-  
+
   await Promise.all(promises);
   console.log('✅ All Redis connections closed');
 };
 
-// Stream names as constants
+// Stream names
 export const STREAMS = {
   PIXEL_EVENTS: 'pixels:events',
   NOTIFICATIONS: 'notifications:events',

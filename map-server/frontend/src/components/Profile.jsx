@@ -8,30 +8,16 @@ const Profile = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // --- SỬA LỖI TẠI ĐÂY ---
-    // Hàm lấy URL tự động:
-    // 1. Nếu chạy Production (Docker) -> Lấy http://136.112.99.88 (qua Nginx)
-    // 2. Nếu chạy Dev -> Lấy http://localhost:4000
-    const getApiUrl = () => {
-        if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-        if (import.meta.env.PROD) return window.location.origin;
-        return 'http://localhost:4000';
-    };
-
-    const API_URL = getApiUrl();
-    // -----------------------
-
     const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
     const openModal = () => { setIsModalOpen(true); setIsMenuOpen(false); };
     const closeModal = () => setIsModalOpen(false);
 
     if (!user) return null;
 
-    // Helper xử lý đường dẫn ảnh (đề phòng backend trả về full url)
+    // Logic đơn giản: Nếu có ảnh thì hiển thị, không thì dùng ảnh mặc định.
+    // Trình duyệt sẽ tự động thêm domain https://se2025-17-3.codes vào trước nếu là đường dẫn tương đối (/uploads/...)
     const getAvatarUrl = () => {
-        if (!user.avatarUrl) return '/default-avatar.png'; // Ảnh mặc định trong folder public frontend
-        if (user.avatarUrl.startsWith('http')) return user.avatarUrl;
-        return `${API_URL}${user.avatarUrl}`;
+        return user.avatarUrl ? user.avatarUrl : '/default-avatar.png';
     };
 
     return (
@@ -41,7 +27,6 @@ const Profile = () => {
                     src={getAvatarUrl()}
                     alt={user.displayName}
                     className="avatar"
-                    // Thêm fallback: Nếu ảnh lỗi thì hiện ảnh mặc định
                     onError={(e) => {
                         e.target.onerror = null;
                         e.target.src = '/default-avatar.png';

@@ -1,4 +1,4 @@
-// D:\Code\SE2025-17.3\map-server\backend\migrations\20251120101450-add-pixelevent-and-team-models.cjs
+// map-server/backend/migrations/20251120101450-add-pixelevent-and-team-models.cjs
 
 module.exports = {
   /**

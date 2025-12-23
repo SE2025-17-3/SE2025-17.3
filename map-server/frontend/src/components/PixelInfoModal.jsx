@@ -1,4 +1,4 @@
-// D:\Code\SE2025-17.3\map-server\frontend\src\components\PixelInfoModal.jsx
+// map-server/frontend/src/components/PixelInfoModal.jsx
 import React from 'react';
 import './PixelInfoModal.css';
 
@@ -13,7 +13,7 @@ const PixelInfoModal = ({
   if (!pixel) return null;
 
   // Lấy thêm teamName
-  const { gx, gy, user, teamName } = pixel;
+  const { gx, gy, user, teamName, color } = pixel;
 
   // --- LOGIC HIỂN THỊ ---
   let paintedByText;
@@ -56,6 +56,23 @@ const PixelInfoModal = ({
       <div className="pixel-status" style={{ color: statusColor }}>
         {paintedByText}
       </div>
+
+      {color && (
+        <div className="pixel-status">
+          <span
+            style={{
+              display: 'inline-block',
+              width: 12,
+              height: 12,
+              borderRadius: 3,
+              marginRight: 6,
+              border: '1px solid #d1d5db',
+              backgroundColor: color
+            }}
+          />
+          Color: {color}
+        </div>
+      )}
 
       <div className="pixel-actions">
         <button className="pill-button primary" onClick={onStartMultiPaint}>Paint</button> 

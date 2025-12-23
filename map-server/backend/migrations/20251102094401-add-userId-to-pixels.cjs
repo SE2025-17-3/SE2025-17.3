@@ -1,4 +1,4 @@
-// D:\Code\SE2025-17.3\map-server\backend\migrations\20251102094401-add-userId-to-pixels.cjs
+// map-server/backend/migrations/20251102094401-add-userId-to-pixels.cjs
 
 module.exports = {
   /**

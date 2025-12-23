@@ -1,3 +1,4 @@
+// map-server/backend/src/routes/paymentRoutes.js
 import express from 'express';
 import paymentController from '../controllers/paymentController.js';
 import { protect } from '../middleware/authMiddleware.js';

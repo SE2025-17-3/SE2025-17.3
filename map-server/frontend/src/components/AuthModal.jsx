@@ -9,15 +9,8 @@ import './AuthModal.css';
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_V2_SITE_KEY;
 
 const AuthModal = ({ onClose }) => {
-  // Mode quản lý các trạng thái của Modal:
-  // 'login': Đăng nhập
-  // 'register': Đăng ký
-  // 'register_verify': Nhập mã OTP để kích hoạt tài khoản (MỚI)
-  // 'forgot_request': Nhập Username + Email để lấy mã
-  // 'forgot_verify': Nhập mã OTP quên mật khẩu
-  // 'forgot_reset': Nhập mật khẩu mới
   const [mode, setMode] = useState('login');
-
+  
   // State chung
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -33,9 +26,8 @@ const AuthModal = ({ onClose }) => {
   const [recaptchaToken, setRecaptchaToken] = useState(null);
   const captchaRef = useRef(null);
 
-  const { login, loginGoogle } = useAuth(); // Bỏ 'register' từ context, gọi trực tiếp api để dễ control luồng
+  const { login, loginGoogle } = useAuth();
 
-  // --- HÀM RESET FORM ---
   const resetForm = () => {
     setError(null);
     setMessage(null);
@@ -58,11 +50,9 @@ const AuthModal = ({ onClose }) => {
     setIsLoading(true);
     try {
       if (mode === 'login') {
-        // --- LOGIC ĐĂNG NHẬP ---
         await login({ username, password, recaptchaToken });
         onClose();
       } else {
-        // --- LOGIC ĐĂNG KÝ ---
         if (password !== confirmPassword) {
           setError('Mật khẩu xác thực không khớp.');
           setIsLoading(false);
@@ -70,15 +60,12 @@ const AuthModal = ({ onClose }) => {
           return;
         }
 
-        // Gọi API Đăng ký
         await api.post('/auth/register', {
           username, email, password, confirmPassword, recaptchaToken
         });
 
         setMessage('Mã xác thực đã được gửi tới email của bạn.');
-        setMode('register_verify'); // Chuyển sang bước nhập OTP kích hoạt
-
-        // Xóa mật khẩu để an toàn, giữ lại email để verify
+        setMode('register_verify');
         setPassword('');
         setConfirmPassword('');
         resetForm();
@@ -93,7 +80,6 @@ const AuthModal = ({ onClose }) => {
     }
   };
 
-  // --- 2. XỬ LÝ XÁC THỰC EMAIL (SAU KHI ĐĂNG KÝ) ---
   const handleVerifyEmail = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -101,7 +87,7 @@ const AuthModal = ({ onClose }) => {
     try {
       await api.post('/auth/verify-email', { email, otp });
       alert('Tài khoản đã được kích hoạt thành công! Vui lòng đăng nhập.');
-      setMode('login'); // Chuyển về login
+      setMode('login');
       setOtp('');
       resetForm();
     } catch (err) {
@@ -111,17 +97,14 @@ const AuthModal = ({ onClose }) => {
     }
   };
 
-  // --- 3. XỬ LÝ QUÊN MẬT KHẨU: BƯỚC 1 (LẤY MÃ) ---
   const handleGetCode = async (e) => {
     e.preventDefault();
     if (!recaptchaToken) {
       setError('Vui lòng xác thực ReCAPTCHA trước khi lấy mã.');
       return;
     }
-
     setIsLoading(true);
     setError(null);
-
     try {
       await api.post('/auth/forgot-password', { username, email });
       setMessage(`Mã xác thực đã được gửi đến ${email}.`);
@@ -136,14 +119,13 @@ const AuthModal = ({ onClose }) => {
     }
   };
 
-  // --- 4. XỬ LÝ QUÊN MẬT KHẨU: BƯỚC 2 (CHECK OTP) ---
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
     try {
       await api.post('/auth/verify-otp', { email, otp });
-      setMode('forgot_reset'); // Chuyển sang đổi pass
+      setMode('forgot_reset');
       setMessage(null);
     } catch (err) {
       setError(err.response?.data?.message || 'Mã xác thực không đúng.');
@@ -152,14 +134,12 @@ const AuthModal = ({ onClose }) => {
     }
   };
 
-  // --- 5. XỬ LÝ QUÊN MẬT KHẨU: BƯỚC 3 (ĐỔI PASS) ---
   const handleResetPassword = async (e) => {
     e.preventDefault();
     if (password !== confirmPassword) {
       setError('Mật khẩu nhập lại không khớp.');
       return;
     }
-
     setIsLoading(true);
     try {
       await api.post('/auth/reset-password', { email, otp, password });
@@ -175,7 +155,6 @@ const AuthModal = ({ onClose }) => {
     }
   };
 
-  // --- XỬ LÝ GOOGLE ---
   const handleGoogleSuccess = async (res) => {
     try {
       await loginGoogle(res.credential);
@@ -184,8 +163,6 @@ const AuthModal = ({ onClose }) => {
       setError("Đăng nhập Google thất bại.");
     }
   };
-
-  // --- RENDER GIAO DIỆN ---
 
   const getTitle = () => {
     if (mode === 'login') return 'Đăng nhập';
@@ -206,7 +183,6 @@ const AuthModal = ({ onClose }) => {
             <span style={{fontSize: '1.5rem', fontWeight: 700, marginLeft: '0.5rem'}}>wplace</span>
           </div>
 
-          {/* --- TAB HEADER (Chỉ hiện khi ở Login/Register) --- */}
           {(mode === 'login' || mode === 'register') && (
               <div className="auth-modal-tabs">
                 <button className={`tab ${mode === 'login' ? 'active' : ''}`} onClick={() => { setMode('login'); resetForm(); }}>Đăng nhập</button>
@@ -214,7 +190,6 @@ const AuthModal = ({ onClose }) => {
               </div>
           )}
 
-          {/* --- TIÊU ĐỀ CHO CÁC BƯỚC KHÁC --- */}
           {(!['login', 'register'].includes(mode)) && (
               <h3 style={{textAlign: 'center', margin: '10px 0', color: '#333'}}>{getTitle()}</h3>
           )}
@@ -222,7 +197,7 @@ const AuthModal = ({ onClose }) => {
           {error && <div className="auth-modal-error">{error}</div>}
           {message && <div className="auth-modal-message">{message}</div>}
 
-          {/* --- FORM 1: LOGIN / REGISTER --- */}
+          {/* LOGIN / REGISTER FORM */}
           {(mode === 'login' || mode === 'register') && (
               <form onSubmit={handleAuthSubmit} className="auth-modal-form">
                 <label>Tên đăng nhập</label>
@@ -261,7 +236,7 @@ const AuthModal = ({ onClose }) => {
               </form>
           )}
 
-          {/* --- FORM 2: XÁC THỰC EMAIL ĐĂNG KÝ (MỚI) --- */}
+          {/* VERIFY EMAIL FORM */}
           {mode === 'register_verify' && (
               <form onSubmit={handleVerifyEmail} className="auth-modal-form">
                 <p style={{fontSize: '14px', textAlign: 'center', color: '#666', marginBottom: '15px'}}>
@@ -276,7 +251,7 @@ const AuthModal = ({ onClose }) => {
               </form>
           )}
 
-          {/* --- FORM 3: FORGOT STEP 1 - YÊU CẦU MÃ --- */}
+          {/* FORGOT PASS STEP 1 */}
           {mode === 'forgot_request' && (
               <form onSubmit={handleGetCode} className="auth-modal-form">
                 <label>Tên đăng nhập</label>
@@ -296,7 +271,7 @@ const AuthModal = ({ onClose }) => {
               </form>
           )}
 
-          {/* --- FORM 4: FORGOT STEP 2 - NHẬP MÃ OTP --- */}
+          {/* FORGOT PASS STEP 2 */}
           {mode === 'forgot_verify' && (
               <form onSubmit={handleVerifyOtp} className="auth-modal-form">
                 <p style={{fontSize: '14px', textAlign: 'center', color: '#666', marginBottom: '15px'}}>
@@ -312,7 +287,7 @@ const AuthModal = ({ onClose }) => {
               </form>
           )}
 
-          {/* --- FORM 5: FORGOT STEP 3 - ĐỔI MẬT KHẨU --- */}
+          {/* FORGOT PASS STEP 3 */}
           {mode === 'forgot_reset' && (
               <form onSubmit={handleResetPassword} className="auth-modal-form">
                 <label>Mật khẩu mới</label>
@@ -327,15 +302,16 @@ const AuthModal = ({ onClose }) => {
               </form>
           )}
 
-          {/* --- GOOGLE LOGIN (Luôn hiện ở Login/Register) --- */}
-          {(mode === 'login' || mode === 'register') && (
+          {/* GOOGLE LOGIN */}
+          {(mode === 'login') && (
               <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', width: '100%', marginBottom: '16px', opacity: 0.6 }}>
                   <div style={{ flex: 1, height: '1px', backgroundColor: '#ccc' }}></div>
                   <span style={{ padding: '0 10px', fontSize: '13px', color: '#666' }}>Hoặc</span>
                   <div style={{ flex: 1, height: '1px', backgroundColor: '#ccc' }}></div>
                 </div>
-                <GoogleLogin onSuccess={handleGoogleSuccess} onError={() => console.log('Login Failed')} theme="outline" size="large" width="100%" text="signin_with" />
+                {/* SỬA Ở ĐÂY: Dùng width="300" thay vì "100%" */}
+                <GoogleLogin onSuccess={handleGoogleSuccess} onError={() => console.log('Login Failed')} theme="outline" size="large" width="300" text="signin_with" />
               </div>
           )}
 

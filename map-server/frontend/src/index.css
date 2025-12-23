@@ -1,4 +1,4 @@
-/* D:\Code\SE2025-17.3\map-server\frontend\src\index.css */
+/* map-server/frontend/src/index.css */
 
 body {
   margin: 0;
@@ -8,7 +8,7 @@ body {
     sans-serif;
 }
 
-/* --- THÊM PHẦN NÀY CHO HIỆU ỨNG THÔNG BÁO --- */
+/* --- HIỆU ỨNG ANIMATION --- */
 @keyframes fadeInDown {
   from {
     opacity: 0;
@@ -33,7 +33,6 @@ body {
 .custom-star-icon svg {
   width: 100%;
   height: 100%;
-  /* Hiệu ứng nhấp nháy nhẹ nếu muốn nổi bật hơn */
   animation: pulse-star 2s infinite; 
 }
 
@@ -45,17 +44,14 @@ body {
 
 /* Tối ưu hóa hiệu năng render bản đồ */
 .leaflet-container {
-  /* Giúp cuộn mượt hơn trên một số trình duyệt */
   touch-action: none; 
 }
 
 .leaflet-layer,
 .leaflet-pane {
-  /* Ép trình duyệt sử dụng GPU để render các lớp bản đồ */
   will-change: transform; 
 }
 
-/* Canvas của chúng ta cũng cần mượt */
 canvas {
   will-change: transform;
 }
@@ -71,7 +67,7 @@ canvas {
 .user-location-dot {
   width: 16px;
   height: 16px;
-  background-color: #3b82f6; /* Màu xanh dương */
+  background-color: #3b82f6;
   border: 2px solid white;
   border-radius: 50%;
   box-shadow: 0 0 4px rgba(0,0,0,0.3);
@@ -97,4 +93,12 @@ canvas {
     transform: scale(1.5);
     opacity: 0;
   }
+}
+
+/* --- QUAN TRỌNG: Ép ảnh Overlay hiển thị sắc nét (Pixelated) --- */
+.leaflet-image-layer {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  -ms-interpolation-mode: nearest-neighbor;
 }
