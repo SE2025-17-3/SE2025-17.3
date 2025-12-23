@@ -271,84 +271,50 @@ export const deleteTeam = async (req, res) => {
  * @access  Private
  */
 export const joinTeam = async (req, res) => {
-    try {
-      const { teamId } = req.params;
-      const userId = req.session.userId;
-  
-      if (!mongoose.Types.ObjectId.isValid(teamId)) {
-        return res.status(400).json({ message: 'Invalid team ID' });
-      }
-  
-      const team = await Team.findById(teamId);
-      if (!team) {
-        return res.status(404).json({ message: 'Team not found' });
-      }
-  
-      const user = await User.findById(userId);
-  
-      if (user.teamId && user.teamId.toString() === teamId) {
-        return res.status(400).json({ message: 'You are already in this team' });
-      }
-  
-      const memberCount = await User.countDocuments({ teamId: team._id });
-      if (memberCount >= MAX_TEAM_SIZE) {
-        return res.status(400).json({ 
-          message: `Team is full (max ${MAX_TEAM_SIZE} members)` 
-        });
-      }
-  
-      if (user.teamId) {
-        await Team.findByIdAndUpdate(user.teamId, { $inc: { memberCount: -1 } });
-        user.teamId = null;
-      }
-  
-      user.teamId = team._id;
-      await user.save();
-  
-      team.memberCount += 1;
-      await team.save();
-  
-      res.json({
-        message: 'Successfully joined team',
-        team: {
-          _id: team._id,
-          name: team.name,
-          memberCount: team.memberCount,
-          overlay: team.overlay
-        },
-        user: {
-          _id: user._id,
-          username: user.username,
-          teamId: user.teamId,
-        },
-      });
-    } catch (error) {
-      console.error('joinTeam error:', error);
-      res.status(500).json({ message: 'Server error' });
+  try {
+    const { teamId } = req.params;
+    const userId = req.session.userId;
+
+    if (!mongoose.Types.ObjectId.isValid(teamId)) {
+      return res.status(400).json({ message: 'Invalid team ID' });
     }
 
-    // Leave current team if in one
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return res.status(404).json({ message: 'Team not found' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.teamId && user.teamId.toString() === teamId) {
+      return res.status(400).json({ message: 'You are already in this team' });
+    }
+
+    const memberCount = await User.countDocuments({ teamId: team._id });
+    if (memberCount >= MAX_TEAM_SIZE) {
+      return res.status(400).json({
+        message: `Team is full (max ${MAX_TEAM_SIZE} members)`
+      });
+    }
+
     if (user.teamId) {
-      // Auto-leave current team and decrement its member count
       await Team.findByIdAndUpdate(user.teamId, { $inc: { memberCount: -1 } });
       user.teamId = null;
     }
 
-    // Join new team
     user.teamId = team._id;
     await user.save();
 
-    // Increment new team's member count
-    team.memberCount += 1;
+    team.memberCount = Math.max(0, (team.memberCount || 0) + 1);
     await team.save();
 
-    console.log(`User ${user.username} (${user._id}) joined team ${team.name} (${team._id})`);
-
-    // Notify other team members about the new member
     try {
-      const otherMembers = await User.find({ 
-        teamId: team._id, 
-        _id: { $ne: userId } 
+      const otherMembers = await User.find({
+        teamId: team._id,
+        _id: { $ne: userId }
       }).select('_id');
 
       if (otherMembers.length > 0) {
@@ -366,10 +332,9 @@ export const joinTeam = async (req, res) => {
         }));
 
         await createNotificationBatch(notifications);
-        console.log(`📨 Sent ${notifications.length} team_member_joined notifications`);
       }
     } catch (notifError) {
-      console.warn('⚠️ Failed to send join notifications:', notifError.message);
+      console.warn('Failed to send join notifications:', notifError.message);
     }
 
     res.json({
@@ -378,6 +343,7 @@ export const joinTeam = async (req, res) => {
         _id: team._id,
         name: team.name,
         memberCount: team.memberCount,
+        overlay: team.overlay
       },
       user: {
         _id: user._id,
@@ -391,66 +357,61 @@ export const joinTeam = async (req, res) => {
   }
 };
 
-/**
- * @desc    Leave current team
- * @route   POST /api/teams/leave
- * @access  Private
- */
 export const leaveTeam = async (req, res) => {
-    try {
-      const userId = req.session.userId;
-      const user = await User.findById(userId);
-  
-      if (!user.teamId) {
-        return res.status(400).json({ message: 'You are not in any team' });
-      }
-  
-      const team = await Team.findById(user.teamId);
-      
-      return res.json({ 
-        message: 'You left and deleted the team (as creator)' 
-      });
+  try {
+    const userId = req.session.userId;
+    const user = await User.findById(userId);
+
+    if (!user || !user.teamId) {
+      return res.status(400).json({ message: 'You are not in any team' });
     }
 
-    // Regular member leaving - decrement team member count
-    const teamName = team?.name;
-    const teamIdForNotif = team?._id;
-
-    if (team) {
-      team.memberCount = Math.max(0, team.memberCount - 1);
-      await team.save();
+    const team = await Team.findById(user.teamId);
+    if (!team) {
+      user.teamId = null;
+      await user.save();
+      return res.status(404).json({ message: 'Team not found' });
     }
+
+    const isCreator = team.createdBy.toString() === userId.toString();
+    const teamName = team.name;
+    const teamIdForNotif = team._id;
+
+    if (isCreator) {
+      await User.updateMany({ teamId: team._id }, { $set: { teamId: null } });
+      await Team.deleteOne({ _id: team._id });
+      return res.json({ message: 'You left and deleted the team (as creator)' });
+    }
+
+    team.memberCount = Math.max(0, (team.memberCount || 0) - 1);
+    await team.save();
 
     user.teamId = null;
     await user.save();
 
-    // Notify remaining team members about the departure
-    if (team) {
-      try {
-        const remainingMembers = await User.find({ 
-          teamId: teamIdForNotif 
-        }).select('_id');
+    try {
+      const remainingMembers = await User.find({
+        teamId: teamIdForNotif
+      }).select('_id');
 
-        if (remainingMembers.length > 0) {
-          const notifications = remainingMembers.map(member => ({
-            userId: member._id,
-            type: 'team_member_left',
-            title: 'Team Member Left',
-            message: `${user.username} left your team "${teamName}"`,
-            data: {
-              teamId: teamIdForNotif,
-              teamName: teamName,
-              leftMemberId: user._id,
-              leftMemberUsername: user.username,
-            },
-          }));
+      if (remainingMembers.length > 0) {
+        const notifications = remainingMembers.map(member => ({
+          userId: member._id,
+          type: 'team_member_left',
+          title: 'Team Member Left',
+          message: `${user.username} left your team "${teamName}"`,
+          data: {
+            teamId: teamIdForNotif,
+            teamName: teamName,
+            leftMemberId: user._id,
+            leftMemberUsername: user.username,
+          },
+        }));
 
-          await createNotificationBatch(notifications);
-          console.log(`📨 Sent ${notifications.length} team_member_left notifications`);
-        }
-      } catch (notifError) {
-        console.warn('⚠️ Failed to send leave notifications:', notifError.message);
+        await createNotificationBatch(notifications);
       }
+    } catch (notifError) {
+      console.warn('Failed to send leave notifications:', notifError.message);
     }
 
     res.json({ message: 'Successfully left team' });

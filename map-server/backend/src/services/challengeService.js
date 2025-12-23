@@ -1,6 +1,5 @@
 // map-server\backend\src\services\challengeService.js
 import mongoose from 'mongoose';
-import moment from 'moment-timezone';
 import Challenge from '../models/Challenge.js';
 import UserChallenge from '../models/UserChallenge.js';
 import UserStreak from '../models/UserStreak.js';
