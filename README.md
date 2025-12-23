@@ -70,22 +70,31 @@ graph TD
         A[App.jsx] --> B[MapContainer]
         B --> C[GlobalCanvasGrid]
         B --> D[PaintControls]
+        B --> E2[HeatmapLayer]
         A --> E[Context Providers]
         E --> F[AuthContext]
         E --> G[SocketContext]
         E --> H[ChallengeContext]
         E --> I[NotificationContext]
+        E --> W[WalletContext]
+        E --> T1[TeamContext]
+        E --> OV[OverlayContext]
+        E --> SD[SoundContext]
+        E --> VR[VerificationContext]
         A --> J[NotificationBell]
         A --> K[NotificationToast]
+        A --> LB[Leaderboard]
+        A --> ST[Store]
+        A --> TM[TeamModal]
     end
 
     subgraph "Backend (Express + Socket.IO)"
         L[server.js] --> M[Express App]
         L --> N[Socket.IO Server]
-        M --> O[Controllers]
-        O --> P[Services]
-        P --> Q[Models]
-        L --> R[Workers]
+        M --> O[Controllers 12x]
+        O --> P[Services 5x]
+        P --> Q[Models 17x]
+        L --> R[Workers 3x]
     end
 
     subgraph "Data Layer"
@@ -102,7 +111,7 @@ graph TD
 ```
 
 - **Mẫu MVC**: Controllers xử lý requests, Models định nghĩa cấu trúc dữ liệu, Services chứa logic nghiệp vụ
-- **Mẫu Context**: React contexts cho trạng thái toàn cục (Auth, Socket, Challenge, Wallet, Notification)
+- **Mẫu Context**: React contexts cho trạng thái toàn cục (Auth, Socket, Challenge, Wallet, Notification, Team, Overlay, Sound, Verification)
 - **Mẫu Repository**: Mongoose models với static methods cho truy cập dữ liệu
 - **Mẫu Observer**: Socket.IO cho phát sóng sự kiện theo thời gian thực
 - **Mẫu Outbox**: Event sourcing cho pixel events và notifications (đảm bảo tính nhất quán)
@@ -146,21 +155,32 @@ graph TD
 - Sử dụng cơ chế "kéo" dữ liệu thụ động cho các thông báo cộng đồng để giảm tải cho server.
 - Giao diện trung tâm thông báo tích hợp biểu tượng chuông, huy hiệu đếm số lượng chưa đọc và lịch sử hoạt động.
 
-| Loại Sự Kiện | Phương Thức | Nguồn Kích Hoạt |
-|---|---|---|
-| `droplets_earned` | **Push** (Toast) | Người dùng hoàn thành thử thách hoặc nhận thưởng |
-| `droplets_spent` | **Push** (Toast) | Xác nhận giao dịch mua hàng tại cửa hàng |
-| `payment_success` | **Push** (Toast) | Webhook Stripe xác nhận thanh toán thành công |
-| `team_member_joined` | **Pull** (Bell) | Có thành viên mới gia nhập đội |
-| `team_member_left` | **Pull** (Bell) | Thành viên rời khỏi đội |
-| `challenge_completed` | **Pull** (Bell) | Hoàn thành thử thách hàng ngày |
-| `badge_earned` | **Pull** (Bell) | Mở khóa thành tích mới |
-
 ### 7. 🔐 Xác Thực & Quản Trị (Auth & Admin)
 - Hỗ trợ đăng nhập đa phương thức bao gồm Email/Mật khẩu truyền thống và Google OAuth.
 - Tích hợp quy trình xác thực email (Email Verification) và luồng khôi phục mật khẩu an toàn.
 - Cung cấp bảng điều khiển CMS cho quản trị viên để giám sát người dùng và xử lý vi phạm.
 - Hệ thống gửi phiếu kháng nghị (Appeal Ticket) tự động dành cho các tài khoản bị hạn chế.
+
+### 8. 🔥 Heatmap Visualization
+- Biểu đồ nhiệt hiển thị các khu vực hoạt động sôi nổi nhất trên bản đồ theo thời gian thực.
+- Bật/tắt layer heatmap để quan sát xu hướng và điểm nóng của cộng đồng.
+- Hỗ trợ phân tích chiến thuật cho đội nhóm trong việc chọn vùng đất để chiếm.
+
+### 9. 🖼️ Blueprint Overlay
+- Tải ảnh template trong suốt đè lên canvas để hướng dẫn vẽ theo mẫu.
+- Điều chỉnh vị trí, kích thước và độ trong suốt của overlay.
+- Công cụ phối hợp đội nhóm giúp các thành viên vẽ đúng pixel theo thiết kế chung.
+- Hỗ trợ định dạng ảnh PNG với transparency.
+
+### 10. 💬 Real-time Chat
+- Chat realtime trong đội nhóm qua Socket.IO.
+- Ping vị trí chiến thuật trực tiếp trên Canvas để điều phối thành viên.
+- Lịch sử tin nhắn được lưu trữ và đồng bộ giữa các phiên làm việc.
+
+### 11. 🔊 Sound Settings
+- Cài đặt âm thanh tùy chỉnh cho các sự kiện trong game.
+- Bật/tắt hiệu ứng âm thanh khi đặt pixel, nhận thông báo, hoàn thành thử thách.
+- Điều chỉnh âm lượng cho từng loại sự kiện riêng biệt.
 
 ---
 
@@ -251,6 +271,7 @@ docker-compose up -d
 
 # Production
 docker-compose -f docker-compose.prod.yml up -d
+```
 
 ---
 
@@ -260,55 +281,105 @@ docker-compose -f docker-compose.prod.yml up -d
 map-server/
 ├── backend/
 │   ├── src/
-│   │   ├── config/          # Cấu hình hệ thống (Redis, DB, Env)
-│   │   │   └── redis.js     # Redis client + Stream constants
-│   │   ├── controllers/     # Xử lý HTTP Request
+│   │   ├── config/              # Cấu hình hệ thống
+│   │   │   ├── db.js            # Kết nối MongoDB
+│   │   │   ├── redis.js         # Redis client + Stream constants
+│   │   │   ├── stripe.js        # Stripe configuration
+│   │   │   ├── prisma.js        # Prisma client
+│   │   │   └── paymentPackages.js
+│   │   ├── controllers/         # Xử lý HTTP Request (12 files)
 │   │   │   ├── authController.js
 │   │   │   ├── pixelController.js
 │   │   │   ├── teamController.js
-│   │   │   └── notificationController.js  # CRUD thông báo
-│   │   ├── middleware/      # Middleware (Auth, Validation)
-│   │   ├── models/          # Định nghĩa Schema
-│   │   │   ├── User.js
+│   │   │   ├── challengeController.js
+│   │   │   ├── leaderboardController.js
+│   │   │   ├── notificationController.js
+│   │   │   ├── paymentController.js
+│   │   │   ├── statsController.js
+│   │   │   ├── storeController.js
+│   │   │   ├── userController.js
+│   │   │   ├── walletController.js
+│   │   │   └── adminController.js
+│   │   ├── middleware/          # Middleware (Auth, Validation)
+│   │   ├── models/              # Định nghĩa Schema (17 files)
+│   │   │   ├── User.js          # User + Challenge tracking + Payment
 │   │   │   ├── Pixel.js
 │   │   │   ├── Team.js
-│   │   │   ├── Notification.js   # Schema thông báo
-│   │   │   └── Outbox.js         # Event outbox pattern
-│   │   ├── routes/          # Định tuyến API
-│   │   │   └── notificationRoutes.js
-│   │   ├── services/        # Logic nghiệp vụ (Business Logic)
+│   │   │   ├── Challenge.js
+│   │   │   ├── UserChallenge.js
+│   │   │   ├── UserStreak.js
+│   │   │   ├── Badge.js
+│   │   │   ├── Notification.js
+│   │   │   ├── Outbox.js        # Event outbox pattern
+│   │   │   ├── Wallet.js
+│   │   │   ├── Transaction.js
+│   │   │   ├── Payment.js
+│   │   │   ├── StoreItem.js
+│   │   │   ├── Inventory.js
+│   │   │   ├── ChatMessage.js
+│   │   │   ├── Appeal.js
+│   │   │   └── PixelEvent.js
+│   │   ├── routes/              # Định tuyến API (12 files)
+│   │   ├── services/            # Logic nghiệp vụ (5 files)
 │   │   │   ├── challengeService.js
 │   │   │   ├── walletService.js
 │   │   │   ├── paymentService.js
+│   │   │   ├── storeService.js
 │   │   │   └── notificationService.js
-│   │   ├── socket/          # Xử lý sự kiện Socket.IO
-│   │   ├── utils/           # Các hàm tiện ích (Helpers)
-│   │   ├── workers/         # Xử lý tác vụ nền (Background Jobs)
+│   │   ├── socket/              # Socket.IO handlers
+│   │   │   └── chatHandler.js
+│   │   ├── utils/               # Helpers
+│   │   └── workers/             # Background Jobs (3 files)
 │   │       ├── outboxPublisher.js     # Outbox -> Redis Stream
 │   │       ├── streamConsumer.js      # Xử lý pixel event
-│   │       └── notificationConsumer.js # Xử lý phân phối thông báo
-│   ├── prisma/              # Prisma schema & Config
-│   └── server.js            # Entry point & Worker init
+│   │       └── notificationConsumer.js # Phân phối thông báo
+│   ├── prisma/                  # Prisma schema & Config
+│   ├── migrations/              # MongoDB migrations
+│   └── server.js                # Entry point & Worker init
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── components/
-│   │   │   ├── NotificationBell.jsx   # UI chuông & Dropdown
-│   │   │   ├── NotificationToast.jsx  # UI Toast Pop-ups
-│   │   │   └── Notification.css       # Styles
-│   │   ├── context/         # Global State Management
+│   │   ├── components/          # UI Components (54 files)
+│   │   │   ├── GlobalCanvasGrid.jsx  # Canvas chính
+│   │   │   ├── TeamModal.jsx         # Quản lý đội nhóm
+│   │   │   ├── Leaderboard.jsx       # Bảng xếp hạng
+│   │   │   ├── Store.jsx             # Cửa hàng vật phẩm
+│   │   │   ├── Checkout.jsx          # Thanh toán
+│   │   │   ├── ChatBox.jsx           # Chat realtime
+│   │   │   ├── ChallengePanel.jsx    # Thử thách hàng ngày
+│   │   │   ├── NotificationBell.jsx  # Chuông thông báo
+│   │   │   ├── NotificationToast.jsx # Toast pop-ups
+│   │   │   ├── HeatmapLayer.jsx      # Heatmap visualization
+│   │   │   ├── PaintControls.jsx     # Công cụ vẽ
+│   │   │   ├── AuthModal.jsx         # Đăng nhập/Đăng ký
+│   │   │   ├── AdminManager.jsx      # Quản trị viên
+│   │   │   └── ...                   # 40+ components khác
+│   │   ├── context/             # Global State (9 contexts)
 │   │   │   ├── AuthContext.jsx
 │   │   │   ├── SocketContext.jsx
 │   │   │   ├── ChallengeContext.jsx
-│   │   │   └── NotificationContext.jsx
-│   │   ├── services/        # API Integration
-│   │   │   └── notificationApi.js
-│   │   ├── config/          # Hằng số hệ thống
-│   │   ├── App.jsx          # Main App Component
-│   │   └── main.jsx         # Entry point
+│   │   │   ├── NotificationContext.jsx
+│   │   │   ├── WalletContext.jsx
+│   │   │   ├── TeamContext.jsx
+│   │   │   ├── OverlayContext.jsx
+│   │   │   ├── SoundContext.jsx
+│   │   │   └── VerificationContext.jsx
+│   │   ├── services/            # API Integration (9 files)
+│   │   │   ├── api.js           # Axios instance
+│   │   │   ├── challengeApi.js
+│   │   │   ├── leaderboardApi.js
+│   │   │   ├── notificationApi.js
+│   │   │   ├── paymentApi.js
+│   │   │   ├── pixelApi.js
+│   │   │   ├── storeApi.js
+│   │   │   ├── teamApi.js
+│   │   │   └── walletApi.js
+│   │   ├── config/              # Hằng số hệ thống
+│   │   ├── App.jsx              # Main App Component
+│   │   └── main.jsx             # Entry point
 │   └── index.html
 │
-└── docker-compose.yml       # Docker Orchestration
+└── docker-compose.yml           # Docker Orchestration
 ```
 ---
 
